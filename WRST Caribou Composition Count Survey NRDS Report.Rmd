@@ -56,8 +56,6 @@ FigureCount = 1
 
 ```
 
- # `r Year` Composition Count Survey Results, Wrangell - St. Elias National Park and Preserve
-
 Scott D. Miller  
 Information Technology Specialist/Data Manager  
 National Park Service, Arctic Inventory and Monitoring Network  
@@ -69,8 +67,6 @@ Anchorage, AK 99501
 
 # Introduction
 Caribou abundance, survivorship and herd composition have been monitored at Wrangell - St. Elias National Park and Preserve (WRST) since the early 1980s for the Chisana herd, and the 1990s for the Mentasta herd (Table 1). Monitoring of caribou populations in WRST employs the use of radiocollars and radiotelemetry to locate groups and to provide a mark/recapture estimate of population size as well as age and sex composition. Population assessment is made in two efforts: a post-calving (June) census, when cows are grouped and calf production can be determined; and a fall (Sept. - Oct.) composition count when bulls associate with cows during the rut. With the mark-recapture estimate of cows from the spring survey and the herd composition obtained from the fall count, the herd size, composition, and calf recruitment can be estimated. Both annual surveys are conducted by aerial observation from a helicopter and small airplane.
-
-
 
 Table `r TableCount`. Length of record for monitoring of the Chisana and Mentasta caribou herds in WRST for radiotracking and herd composition and abundance surveys.
 ```{r echo=FALSE}
@@ -98,9 +94,6 @@ TableCount = TableCount + 1
 # Methods
 
 Monitoring protocols were formalized in a collaboration between the Park and the Central Alaska Inventory and Monitoring Program in 2018 (Putera and Miller, 2018). These protocols, as well as associated standard operating procedures, reports, journal articles and data are available through the NPS''s Integrated Resource Management Applications portal at [https://irma.nps.gov/DataStore/Reference/Profile/2217176](https://irma.nps.gov/DataStore/Reference/Profile/2217176). 
-
-
-
 
 # Results
 
