@@ -1,0 +1,193 @@
+
+```{r echo=FALSE}
+
+# Set the year to which the report should be constrained below
+Year = 2022 # Change this to the year of the composition count survey
+Herd = 'Chisana'
+SurveyName = '2022 Fall Chisana Caribou Composition Survey' # Change this to the survey name in the WRST Caribou database.
+```
+
+---
+title: Results from the `r Year` Composition Count Survey of the `r Herd` Caribou Herd in Wrangell - St. Elias National Park and Preserve, Alaska
+author: "Scott D. Miller"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+    toc: true
+---
+
+```{r setup, include=FALSE}
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(RODBC)
+library(sf)
+library(ggplot2)
+
+
+# Database connection string
+Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+
+# Function that returns a data frame from an SQL query on the database
+# SQL: A valid SQL query
+GetDataFrame <- function(SQL) { # create a function with the name my_function
+  DF = sqlQuery(Connection,SQL)
+  return(DF)
+}
+
+# Function to convert a data frame of Lat/Lon pairs to a spatial data frame
+# DataFrame: A data frame containing a latitude field and a longitude field
+# LatitudeFieldName: The name of the field containing latitude data
+# LongitudeFieldName: The name of the field containing longitude data
+GetPointSpatialDataFrameFromDataFrame = function(DataFrame,LatitudeFieldName,LongitudeFieldName){
+  
+  # Convert the data frame into a spatial data frame
+  SDF <- sf::st_as_sf(DataFrame, coords = c(LongitudeFieldName,LatitudeFieldName))
+
+  # Set the coordinate system to GCS Lat\Lon WGS1984
+  st_crs(SDF) <- st_crs(4326)
+  
+  return(SDF)
+}
+
+
+TableCount = 1
+FigureCount = 1
+
+```
+
+ # `r Year` Composition Count Survey Results, Wrangell - St. Elias National Park and Preserve
+
+Scott D. Miller  
+Information Technology Specialist/Data Manager  
+National Park Service, Arctic Inventory and Monitoring Network  
+240 W. 5th Ave.  
+Anchorage, AK 99501
+
+# Executive summary
+[to be written by author based on the info below]
+
+# Introduction
+Caribou abundance, survivorship and herd composition have been monitored at Wrangell - St. Elias National Park and Preserve (WRST) since the early 1980s for the Chisana herd, and the 1990s for the Mentasta herd (Table 1). Monitoring of caribou populations in WRST employs the use of radiocollars and radiotelemetry to locate groups and to provide a mark/recapture estimate of population size as well as age and sex composition. Population assessment is made in two efforts: a post-calving (June) census, when cows are grouped and calf production can be determined; and a fall (Sept. - Oct.) composition count when bulls associate with cows during the rut. With the mark-recapture estimate of cows from the spring survey and the herd composition obtained from the fall count, the herd size, composition, and calf recruitment can be estimated. Both annual surveys are conducted by aerial observation from a helicopter and small airplane.
+
+
+
+Table `r TableCount`. Length of record for monitoring of the Chisana and Mentasta caribou herds in WRST for radiotracking and herd composition and abundance surveys.
+```{r echo=FALSE}
+Sql = paste("SELECT  Herd
+, 'Radiotracking' as [Survey type]
+,MIN(year(SightingDate)) AS [Earliest]
+,",Year," AS [Latest survey]
+,",Year,"  - Min(Year(SightingDate)) as [Years of record]
+FROM            Radiotracking
+GROUP BY Herd
+UNION
+SELECT   Herd
+,'Census surveys' as [Survey type]
+, MIN(year(SightingDate)) AS [Earliest]
+,",Year," AS [Latest survey]
+,",Year,"  - Min(year(SightingDate)) as [Years of record]
+FROM CaribouGroups
+GROUP BY Herd
+ORDER BY Herd,[Survey Type]",sep="")
+LengthOfRecordDF = GetDataFrame(Sql)
+kable(LengthOfRecordDF)
+TableCount = TableCount + 1
+```
+
+# Methods
+
+Monitoring protocols were formalized in a collaboration between the Park and the Central Alaska Inventory and Monitoring Program in 2018 (Putera and Miller, 2018). These protocols, as well as associated standard operating procedures, reports, journal articles and data are available through the NPS''s Integrated Resource Management Applications portal at [https://irma.nps.gov/DataStore/Reference/Profile/2217176](https://irma.nps.gov/DataStore/Reference/Profile/2217176). 
+
+
+
+
+# Results
+
+Table `r TableCount`. Observer/pilot pairs, `r Year`.
+```{r echo=FALSE}
+
+Sql = paste("SELECT  DISTINCT CONVERT(Date, SightingDate) AS [Date],   SearchArea, Observer1 AS Observer, Pilot
+FROM            CaribouGroups
+WHERE        (SurveyName = '",SurveyName,"') AND (SurveyType = 'CC')
+ORDER BY [Date],SearchArea, Observer, Pilot",sep="")
+ObsPilotsDF = GetDataFrame(Sql)
+kable(ObsPilotsDF)
+# TableCount = TableCount + 1
+```
+
+
+## Distribution
+
+Caribou were distributed as shown in Figure `r FigureCount`.
+
+```{r echo=FALSE}
+
+# Get the spatial data for comp and population surveys
+CCSql = paste("SELECT SurveyName,SearchArea, GroupNumber, Lat, Lon,Lat as Latitude,Lon as Longitude FROM Dataset_Census WHERE SurveyName = '",SurveyName,"' And Lat > 0",sep="")
+CCDF = GetDataFrame(CCSql)
+
+# Convert the data into a spatial data frame
+# Get rid of rows with no spatial coordinates - they will cause the map to bomb
+CCWithCoordinatesDF = subset(CCDF,Lat != "NULL" & Lon != "NULL")
+CCSDF = GetPointSpatialDataFrameFromDataFrame(CCWithCoordinatesDF,"Lat","Lon")
+
+# Read the shapefile into a spatial features dataset
+AKParksShp <- sf::read_sf("C:/Work/GIS Common Layers/GCS/AKParks_reprojected.shp")
+
+#Plot the points over the shapefile (shapefile first, then points)
+ggplot() + geom_sf(data = AKParksShp) + 
+  geom_sf(data = CCSDF, color='black', size= 2, show.legend = T) +
+  # geom_text(data = CCSDF, size = 3, color = 'red',mapping = aes(CCSDF$Longitude,CCSDF$Latitude,label = CCSDF$SurveyName), vjust = -1,hjust = 0,inherit.aes = FALSE) +
+  
+   # Density layer
+    geom_density_2d(data = CCDF, aes(x = Longitude, y = Latitude), colour = "red", alpha = 0.9) +
+    scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
+    guides(fill = guide_legend(title = "Density of observations")) + # This gives a legend to the density
+  
+  # Limit the view port to just WRST
+  xlim(-146.5,-139) +
+  ylim(59.8,62.65) +
+  #ggtitle(paste("Composition and population survey observations,",Year,sep="") ,subtitle = "Wrangell-St. Elias National Park and Preserve") +
+  xlab('Longitude') + ylab('Latitude')
+
+```
+
+Figure `r FigureCount`. Distribution and density of caribou groups in Wrangell - St. Elias National Park and Preserve and outlying areas during the `r SurveyName`.
+
+```{r echo=FALSE}
+FigureCount = FigureCount + 1
+```
+
+
+## Composition
+
+
+Table `r TableCount`. Composition survey results.
+```{r echo=FALSE}
+Sql = paste("SELECT        [Survey name], Herd, [Survey type], [Type of survey], Cow, Calf, [Small bull], [Medium bull], [Large bull], [Bull (composition survey)], [Adult (composition survey)], [Caribou (composition survey)], Unknown, [Calf, male], 
+                         [Calf, female], [Calf, unclassified], [Calves/100 cows], [Bulls/100 cows (composition survey)], [Total groups observed], [Groups in the survey area], [Groups out of the survey area], [Marked groups], [Marked groups seen], 
+                         [Marked groups not seen], [Percent marked groups seen], [Percent marked groups not seen], [Total collared animals observed], [Number of frequencies that were available on survey date (Animal_Movement)], 
+                         [Collars not heard or not searched], [Total groups marked seen], [Start date], [End date], [Survey days], [Search areas]
+FROM            Summary_Census
+WHERE ([Survey name] = '",SurveyName,"')",sep="")
+CCDF = GetDataFrame(Sql)
+kable(t(CCDF))
+TableCount = TableCount + 1
+
+```
+
+Table `r TableCount`. Composition survey results by search area. [DEFINE THE SEARCH AREAS].
+```{r echo=FALSE}
+Sql = paste("SELECT        [Survey name], Herd, [Type of survey], SearchArea, Cow, Calf, [Small bull], [Medium bull], [Large bull], [Bull (composition survey)], [Adult (composition survey)], [Caribou (composition survey)], Unknown, [Calf, male], 
+ [Calf, female], [Calf, unclassified], [Calves/100 cows], [Bulls/100 cows (composition survey)], [Total groups observed], [Groups in the survey area], [Groups out of the survey area], [Marked groups], [Marked groups seen], 
+ [Marked groups not seen], [Percent marked groups seen], [Percent marked groups not seen], [Total collared animals observed], [Total groups marked seen], [Start date], [End date], [Survey days], [Search areas], Park, Year
+FROM Summary_CensusBySearchArea
+WHERE ([Survey name] = '",SurveyName,"')
+ORDER BY [Searcharea]",sep="")
+CCDF = GetDataFrame(Sql)
+kable(t(CCDF))
+TableCount = TableCount + 1
+```
+
+
