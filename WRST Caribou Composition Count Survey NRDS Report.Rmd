@@ -228,28 +228,28 @@ FigureCount = FigureCount + 1
 
 
 
-# Sightability
+<!-- # Sightability DOES NOT APPEAR TO BE A BIG PART OF COMP SURVEYS SO COMMENTED OUT -->
 
-Stats
+<!-- Stats -->
 
-```{r echo=FALSE}
-Sql = paste("SELECT Year,Season,[Total groups observed] as n
--- , [Groups in the survey area], [Groups out of the survey area] -- the [In] attribute isn't used much
-, [Marked groups], [Marked groups seen]
---, [Marked groups not seen]
-, [Percent marked groups seen]
---, [Percent marked groups not seen]
---, [Total collared animals observed], [Number of frequencies that were available on survey date (Animal_Movement)]
-, [Collars not heard or not searched], 
- [Total groups marked seen]
-FROM            Summary_Census
-WHERE Herd = '",Herd,"' And [Survey type] = 'CC' 
-ORDER BY Year DESC",sep="")
-ComparisonDF = GetDataFrame(Sql)
+<!-- ```{r echo=FALSE} -->
+<!-- Sql = paste("SELECT Year,Season,[Total groups observed] as n -->
+<!-- -- , [Groups in the survey area], [Groups out of the survey area] -- the [In] attribute isn't used much -->
+<!-- , [Marked groups], [Marked groups seen] -->
+<!-- --, [Marked groups not seen] -->
+<!-- , [Percent marked groups seen] -->
+<!-- --, [Percent marked groups not seen] -->
+<!-- --, [Total collared animals observed], [Number of frequencies that were available on survey date (Animal_Movement)] -->
+<!-- , [Collars not heard or not searched],  -->
+<!--  [Total groups marked seen] -->
+<!-- FROM            Summary_Census -->
+<!-- WHERE Herd = '",Herd,"' And [Survey type] = 'CC'  -->
+<!-- ORDER BY Year DESC",sep="") -->
+<!-- ComparisonDF = GetDataFrame(Sql) -->
 
-kable(ComparisonDF)
+<!-- kable(ComparisonDF) -->
 
-```
+<!-- ``` -->
 
 
 <!-- Table `r TableCount`. Composition survey results by search area. [DEFINE THE SEARCH AREAS]. -->
