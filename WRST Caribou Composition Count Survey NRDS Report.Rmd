@@ -213,12 +213,6 @@ ComparisonDF = GetDataFrame(Sql)
 
 kable(ComparisonDF)
 
-ggplot(data=ComparisonDF, aes(x=Year, y=`Calves/100 cows`, group=1)) +
-  geom_line()+
-  geom_point()
-
-#plot(ComparisonDF$`Calves/100 cows` ~ ComparisonDF$Year)
-
 ```
 
 Figure `r FigureCount`. Calves/100 cows over time.
