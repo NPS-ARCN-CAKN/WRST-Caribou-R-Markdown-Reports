@@ -41,11 +41,15 @@ National Park Service, Arctic Inventory and Monitoring Network\
 240 W. 5th Ave\
 Anchorage, AK 99501
 
-Kyle Cutting\
-Wildlife Biologist\
-National Park Service, Wrangell-St. Elias National Park and Preserve\
-8 Richardson Hwy Mile 106\
-Copper Center, AK 99573
+<!-- Kyle Cutting\ -->
+
+<!-- Wildlife Biologist\ -->
+
+<!-- National Park Service, Wrangell-St. Elias National Park and Preserve\ -->
+
+<!-- 8 Richardson Hwy Mile 106\ -->
+
+<!-- Copper Center, AK 99573 -->
 
 `r format(Sys.Date(), "%B %d, %Y")`
 
@@ -55,7 +59,11 @@ This dataset contains aerial population, composition, and radiotracking survey d
 
 # Dataset Sensitivity Statement
 
-[SENSITIVE DATASET] NPS internal use only. This Dataset contains information about a species of commercial interest and may be subject to international and/or inter-agency data sharing agreements that preclude publication. Caribou monitoring data is defined as sensitive in Bobowski, 2019.
+**[SENSITIVE DATASET]** NPS internal use only. This Dataset contains information about a species of commercial interest and may be subject to international and/or inter-agency data sharing agreements that preclude publication. Caribou monitoring data is defined as sensitive in Bobowski, 2019.
+
+# Access
+
+The data release associated with this report is available from the NPS Data Store at the following URL: <https://irma.nps.gov/DataStore/Reference/Profile/2302203>. This dataset is augmented with new data and corrections on a cycle. The NPS Data Store will always offer to forward you to the latest dataset version.
 
 # Introduction
 
@@ -67,17 +75,16 @@ The WRST caribou certified dataset has two main components, 1) census surveys (h
 
 This DRR describes the data package 'Certified Dataset: Monitoring the Abundance, Composition and Survivorship of the Chisana and Mentasta Caribou Herds in Wrangell-St. Elias National Park and Preserve, Alaska'. which contains a metadata file and 2 data files.
 
-These data were compiled by the National Park Service Biological Resources Division and are available at <https://doi.org/10.57830/12342567> (see Table 1). Table 1: Data Package Title: List of data files
+Table `r TableCounter`: List of data files. `r TableCounter = TableCounter + 1`
 
-| File Name                | Size | Description                                                                         |
-|--------------------------|------|-------------------------------------------------------------------------------------|
-| CensusSurveys.csv        | 0 Mb | Population and composition surveys data for the Chisana and Mentasta Caribou Herds. |
-| RadiotrackingSurveys.csv | 0 Mb | Radiotracking surveys data for the Chisana and Mentasta Caribou Herds.              |
-| Movement.csv             | 0 Mb | Movement data from GPS collars for the Chisana and Mentasta Caribou Herds.          |
+| File Name                                             | Size   | Description |
+|------------------|------------------|-------------------------------------|
+| WRST Caribou Radiotracking Survey Data 2024-01-19.csv | 7.5 Mb | Radiotracking surveys data for the Chisana and Mentasta caribou herds (provisional and certified records). NPS internal use only. Sensitive data about a species of commercial interest.                       |
+| WRST Caribou Census Survey Data 2024-01-19.csv        | 1.5 Mb | Census (population and composition) surveys data for the Chisana and Mentasta caribou herds (provisional and certified records). NPS internal use only. Sensitive data about a species of commercial interest. |
 
-# Data Quality Evaluation (required)
+# Data Quality Evaluation
 
-The data within the data records listed above have been reviewed by staff in the NPS Inventory and Monitoring Division to ensure accuracy, completeness, and consistency with documented data quality standards, as well as for usability and reproducibility. The Data Package Title is suitable for its intended use as of the date of processing (2022-12-19).
+The data within the data records listed above have been reviewed by staff in the NPS Inventory and Monitoring Division to ensure accuracy, completeness, and consistency with documented data quality standards, as well as for usability and reproducibility. This dataset is suitable for its intended use as of the date of processing (`r format(Sys.Date(), "%B %d, %Y")`).
 
 # Methods
 
@@ -92,7 +99,6 @@ Sql = "SELECT        Herd, [Survey type], Earliest, [Latest survey], [Years of r
 FROM            Summary_LengthOfRecordByHerdAndSurveyType"
 DF = GetDataFrame(Sql)
 kable(DF)
-QCCheckCounter = QCCheckCounter + 1
 TableCounter = TableCounter + 1
 ```
 
@@ -106,17 +112,76 @@ Table `r TableCounter`. Summary of certification level by herd and survey type.
 Sql = "SELECT * FROM [Summary_CensusSurveys_CountsByCertificationLevel]"
 DF = GetDataFrame(Sql)
 kable(DF)
-QCCheckCounter = QCCheckCounter + 1
 TableCounter = TableCounter + 1
 ```
 
 Table `r TableCounter + 1`. Description of certification levels: `r TableCounter = TableCounter + 1`
 
 | CertificationLevel | Description                                                                                                                                                                                                                                                                                            |
-|--------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
-| Raw                | Records imported directly from field surveys with no quality control or validation procedures performed.                                                                                                                                                                                               |
+|----------------------|--------------------------------------------------|
+| Raw                | Records imported directly from field surveys with no quality control or validation procedures performed. *Raw records have been excluded from this dataset*.                                                                                                                                           |
 | Provisional        | Records that have undergone minimal quality control and/or have been examined by the project leader and are deemed suitable for internal reports but have not been validated against a published summary or report. Some records may never be fully certified due to the lack of validating materials. |
 | Certified          | Records that have undergone extensive quality control procedures and have been validated against published reports, journal articles or data summary reports.                                                                                                                                          |
+
+# Validation Sources
+
+The records in this data release were recovered from data files going back many decades and required validation against reports, memoranda, original data sheets and whatever other resources could be found. These validation sources are shown in Table `r TableCounter`.
+
+Table `r TableCounter`. Validation sources.
+
+```{r echo=FALSE, label='Summary_SurveySources' }
+Sql = "select * from Summary_SurveySources order by SurveyName"
+DF = GetDataFrame(Sql)
+kable(DF)
+TableCounter = TableCounter + 1
+```
+
+# Metadata
+
+Metadata for this data release appear in the tables in this section. Please note that the descriptions are of the source database tables and columns, not the columns of the data files in this release. The column names do map to each other, however, so users looking for a column definition should be able to scan the list and obtain it. For example, the column names in the census dataset file should map to the column names in the CaribouGroups database table, and the column names in the radiotracking dataset file should map to the Radiotracking database table.
+
+## Data Tables Descriptions
+
+Table `r TableCounter`: Database tables descriptions.
+
+```{r echo=FALSE, label='DatabaseTablesDescriptions' }
+Sql = "select [Table],TableDescription as [Description] from DatabaseTableDescriptions where type='U'
+and [Table] in ('CaribouGroups','GroupMembers','Radiotracking')"
+DF = GetDataFrame(Sql)
+kable(DF)
+TableCounter = TableCounter + 1
+```
+
+## Columns Descriptions
+
+Table `r TableCounter`: Columns Descriptions, Data Types and Units of Measure.
+
+```{r echo=FALSE, label='DatabaseColumnsDescriptions' }
+Sql = "SELECT        [Table], [Column], ColumnDescription As Description
+FROM            DatabaseColumnsDescriptions
+WHERE        ([Table] IN ('CaribouGroups', 'GroupMembers', 'Radiotracking'))
+ORDER BY [Table]"
+DF = GetDataFrame(Sql)
+kable(DF)
+TableCounter = TableCounter + 1
+```
+
+# Known Dataset Issues
+
+Known issues with the WRST caribou monitoring dataset appear in Table `r TableCounter`.
+
+Table `r TableCounter`. Known issues with the WRST caribou dataset.
+
+```{r echo=FALSE, label='KnownIssues' }
+Sql = "SELECT        Surveys_Issues.SurveyName, Surveys_Issues.Author, Surveys_Issues.DateLogged AS Date, Surveys_Issues.Issue
+FROM            Surveys_Issues INNER JOIN
+                         Summary_Census ON Surveys_Issues.SurveyName = Summary_Census.[Survey name]
+WHERE        (Summary_Census.CertificationLevel <> 'Raw')
+ORDER BY Surveys_Issues.SurveyName, Surveys_Issues.IsResolved"
+DF = GetDataFrame(Sql)
+kable(DF)
+TableCounter = TableCounter + 1
+```
 
 # Quality Control Checks
 
@@ -217,7 +282,15 @@ DF = GetDataFrame(Sql)
 ```
 
 Level: Advisory.\
-**Description:** Sightability is an important component of population surveys where a correction factor must be developed statistically to account for animals that were available to be detected, but weren't. Each survey record has FrequenciesInGroup and Marked attributes. If a GPS collar frequency is detected then it is recorded in the FrequenciesInGroup column and the caribou group record's Marked attribute is set to 1. The table below shows surveys that may have records that should be examined for adherence to this rule. This is an advisory because other factors come into play. An animal may be detected, but outside the survey area in which case it is not important that it be [Marked] because it was unavailable for sightability purposes. Other mitigating factors may be at work.
+**Description:** This quality control check is most important for population surveys where a sightability correction factor is involved. This check is unimportant for composition surveys where sightability is not an objective.
+
+Each survey record has FrequenciesInGroup and Marked attributes. If a GPS collar frequency is detected then it is recorded in the FrequenciesInGroup column and the caribou group record's Marked attribute is set to 1. The table below shows surveys that may have records that should be examined for adherence to this rule. This is an advisory because other factors come into play:
+
+-   The survey may be a composition survey
+
+-   An animal may be detected, but outside the survey area in which case it is not important that it be [Marked] because it was unavailable for sightability purposes.
+
+-   Other mitigating factors may be at work depending on the survey objectives.
 
 Table QC-`r QCCheckCounter`. Surveys Having Frequencies Detected But [Marked] attribute Is NULL (`r nrow(DF)` records).
 
@@ -360,7 +433,7 @@ Number of records: `r nrow(DF)`.\
 ### QC-`r QCCheckCounter`: Observed Versus Available Frequencies For A Survey Date
 
 ```{r echo=FALSE, label='QC_Radiotracking_ObservedVersusAvailableFrequenciesForASurveyDate' }
-Sql = 'SELECT * FROM QC_Radiotracking_ObservedVersusAvailableFrequenciesForASurveyDate ORDER By SightingDate'
+Sql = 'SELECT * FROM QC_Radiotracking_ObservedVersusAvailableFrequenciesForASurveyDate ORDER By Herd,SightingDate'
 DF = GetDataFrame(Sql)
 ```
 
@@ -453,7 +526,7 @@ QCCheckCounter = QCCheckCounter + 1
 Number of records: `r nrow(DF)`.\
 **Query:** *`r Sql`*.
 
-### QC-`r QCCheckCounter`: This query returns radiotracking records where a caribou was observed on a date following its recorded MortalityDate in the Animal_Movement.Animal table.
+### QC-`r QCCheckCounter`: Post-mortality caribou observations.
 
 ```{r echo=FALSE, label='QC_Radiotracking_PostMortalitySightings' }
 Sql = 'SELECT * FROM QC_Radiotracking_PostMortalitySightings'
@@ -463,7 +536,7 @@ DF = GetDataFrame(Sql)
 **Level:** Critical.\
 **Description:** This query returns radiotracking records where a caribou was observed on a date following its recorded MortalityDate in the Animal_Movement.Animal table..
 
-Table QC-`r QCCheckCounter`. This query returns radiotracking records where a caribou was observed on a date following its recorded MortalityDate in the Animal_Movement.Animal table (`r nrow(DF)` records).
+Table QC-`r QCCheckCounter`. Post-mortality caribou observations.
 
 ```{r echo=FALSE }
 if (nrow(DF) == 0) {
@@ -525,35 +598,7 @@ QCCheckCounter = QCCheckCounter + 1
 Number of records: `r nrow(DF)`.\
 **Query:** *`r Sql`*.
 
-# Appendix A: Database Metadata
-
-## Data Tables Descriptions
-
-Table A-1: Database tables descriptions.
-
-```{r echo=FALSE, label='DatabaseTablesDescriptions' }
-Sql = "select [Table],TableDescription as [Description] from DatabaseTableDescriptions where type='U'
-and [Table] in ('CaribouGroups','GroupMembers','Radiotracking')"
-DF = GetDataFrame(Sql)
-kable(DF)
-QCCheckCounter = QCCheckCounter + 1
-```
-
-## Columns Descriptions
-
-Table A-2: Columns Descriptions, Data Types and Units of Measure.
-
-```{r echo=FALSE, label='DatabaseColumnsDescriptions' }
-Sql = "SELECT        [Table], [Column], ColumnDescription As Description
-FROM            DatabaseColumnsDescriptions
-WHERE        ([Table] IN ('CaribouGroups', 'GroupMembers', 'Radiotracking'))
-ORDER BY [Table]"
-DF = GetDataFrame(Sql)
-kable(DF)
-QCCheckCounter = QCCheckCounter + 1
-```
-
-# Appendix B: Work Log
+# Appendix: Work Log
 
 Table A-2: Columns Descriptions, Data Types and Units of Measure.
 
@@ -571,5 +616,3 @@ QCCheckCounter = QCCheckCounter + 1
 Bobowski B. 2019. To: MacCluskie M. [Re: Handling of Protected Natural Resource Data - WRST](https://irma.nps.gov/DataStore/DownloadFile/692678). Memorandum. National Park Service. Copper Center, AK.
 
 Putera JA and Miller SD. 2018. [Protocol for monitoring caribou populations in Wrangell-St. Elias National Park & Preserve, Central Alaska Network: Narrative – version 1.0](https://irma.nps.gov/DataStore/Reference/Profile/2256522). Natural Resource Report. NPS/CAKN/NRR—2018/1750. National Park Service. Fort Collins, Colorado
-
-# Acknowledgements
