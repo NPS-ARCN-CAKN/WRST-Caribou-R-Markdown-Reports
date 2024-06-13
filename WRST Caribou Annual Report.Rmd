@@ -110,12 +110,6 @@ TableCount = TableCount + 1
 ```
 
 
-
-
-
-
-
-## Who did it
 Table `r TableCount`. Flight details, `r Year`.
 
 ```{r echo=FALSE}
