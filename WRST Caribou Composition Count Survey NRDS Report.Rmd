@@ -1,7 +1,7 @@
 ```{r echo=FALSE}
 
 # Set report parameters
-Year = 2022 # Year of the comp count survey
+Year = 2023 # Year of the comp count survey
 Herd = 'Chisana' # Herd
 #SurveyName = paste(Year," Fall ",Herd," Caribou Composition Survey",sep="") # Change this to the survey name in the WRST Caribou database.
 SurveyName = "2007-10-13 Chisana Caribou Population Survey"
@@ -21,6 +21,9 @@ output:
 
 ```{r setup, include=FALSE}
 
+# Suppress warnings
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
 # Setup
 options(knitr.kable.NA = '')
 knitr::opts_chunk$set(echo = TRUE)
@@ -28,6 +31,7 @@ library(knitr)
 library(RODBC)
 library(sf)
 library(ggplot2)
+library(tidyverse)
 
 # Restrain the number of decimal places
 options(digits = 1) 
@@ -149,18 +153,31 @@ CCDF = GetDataFrame(Sql)
 WithCoordinatesDF = subset(CCDF,Lat != "NULL" & Lon != "NULL")
 CCSDF = GetPointSpatialDataFrameFromDataFrame(WithCoordinatesDF,"Lat","Lon")
 
-# Read the shapefile into a spatial features dataset
-# Script users will have to point to a WRST park layer in geographic coordinate system or ask me and I'll send this one
-AKParksShp <- sf::read_sf("C:/Work/GIS Common Layers/GCS/AKParks_reprojected.shp")
+
+# Park boundaries (geojson) are at https://irma.nps.gov/DataStore/Reference/Profile/2303652
+# Create a temporary file on user's hard drive
+tmp_geojson <- tempfile(fileext = ".geojson")
+
+# Download the spatial data file to the temporary file location created above
+download.file("https://irma.nps.gov/DataStore/DownloadFile/702822",tmp_geojson)
+
+# Read the temporary spatial data file into an sf object
+AKParks = read_sf(tmp_geojson)
 
 # Show a map of where caribou groups were found during the survey. Generate a density heat map also.
 #Plot the points over the shapefile (shapefile first, then points)
 ggplot() + 
-  geom_sf(data = AKParksShp) + geom_density_2d(data = CCDF, aes(x = Longitude, y = Latitude), colour = "red", alpha = 0.9) +
-  geom_sf(data = CCSDF, color='black', size= 1, show.legend = T) +
-  # geom_text(data = CCSDF, size = 3, color = 'red',mapping = aes(CCSDF$Longitude,CCSDF$Latitude,label = CCSDF$SurveyName), vjust = -1,hjust = 0,inherit.aes = FALSE) +
   
-  # Density layer
+  # Park boundary
+  geom_sf(data = AKParks,fill = "white", color = "black") + 
+  
+  # Caribou kernes density
+  geom_density_2d(data = CCDF, aes(x = Longitude, y = Latitude), colour = "red", alpha = 0.9) +
+  
+  # Caribou observations
+  geom_sf(data = CCSDF, color='black', size= 1, show.legend = T) +
+  
+  # Adjust colors
   scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
   guides(fill = guide_legend(title = "Density of observations")) + # This gives a legend to the density
   
@@ -168,7 +185,11 @@ ggplot() +
   xlim(-146.5,-139) +
   ylim(59.8,62.65) +
   #ggtitle(paste("Caribou observations distribution and density",sep="") ,subtitle = CompDF$`Start date`) +
+  
+  # Label axes
   xlab('Longitude') + ylab('Latitude') +
+  
+  # Clean look
   theme_classic()
 
 ```
@@ -271,8 +292,6 @@ Values <- c(Calf,Cow,SmallBull,MediumBull,LargeBull,Bull,Unknown)
 Values[is.na(Values)] = 0 # NAs to 0
 Categories <- c('Calf','Cow','Sm. Bull','Med. Bull','Lg. Bull','Bull','Unclassified') 
 barplot(Values,names.arg = Categories,ylim=c(0,1),main="Herd composition",ylab="Proportion of total")
-Values
-
 
 
 ```
@@ -282,27 +301,6 @@ Figure `r FigureCount`. Herd composition by age and sex, proportion of total car
 ```{r echo=FALSE}
 FigureCount = FigureCount + 1
 ```
-
-```{r echo=FALSE}
-
-#Proportion of bulls composition bar chart
-SmallBull = CompDF$`Small bull` / CompDF$Bull
-MediumBull = CompDF$`Medium bull` / CompDF$Bull
-LargeBull = CompDF$`Large bull` / CompDF$Bull
-
-Values <- c(SmallBull,MediumBull,LargeBull)    
-Values[is.na(Values)] = 0 # NAs to 0
-Categories <- c('Sm. Bull','Med. Bull','Lg. Bull') 
-barplot(Values,names.arg = Categories,ylim=c(0,1),main="Bulls composition",ylab="Proportion of total bulls")
-
-```
-
-Figure `r FigureCount`. Herd composition by age and sex, proportion of total caribou observed (`r CompDF$Caribou`).
-
-```{r echo=FALSE}
-FigureCount = FigureCount + 1
-```
-
 
 ## Radiotelemetry 
 
@@ -398,42 +396,46 @@ Survey types: CC = Composition count, PE = Population estimate
 
 Table `r TableCount` and Figures `r FigureCount` and `r FigureCount + 1` summarize historical sex and age ratios and herd composition statistics over time for the `r Herd` herd.
 
+#### Historical Data
+
 Table `r TableCount`. Historical sex and age ratios and herd composition statistict for the `r Herd` herd.
 
 ```{r echo=FALSE}
 # Grab all the historical comp count statistical data for the herd into a frame and show it (the table above shows counts; this table shows calculated stats)
 # Exclude raw data - provisional or certified only
-Sql = paste("SELECT        Year, [Survey type], GroupSize_Mean AS [Mean group size], [Pct. calf], [Pct. cow], [Pct. bull (composition survey)] AS [Pct. bull], [Calves/100 cows], [Bulls/100 cows], [Total groups observed] AS n, [Pct. small bull], 
-                         [Pct. medium bull], [Pct. large bull]
-FROM            Summary_Census
+Sql = paste("SELECT Herd, Year,Timing, [Survey type], GroupSize_Mean AS [Mean group size], [Pct. calf], [Pct. cow], [Pct. bull (composition survey)] AS [Pct. bull], [Calves/100 cows], [Bulls/100 cows], [Total groups observed] AS n, [Pct. small bull], 
+ [Pct. medium bull], [Pct. large bull]
+FROM Summary_Census
 WHERE Herd = '",Herd,"' And [Survey type] = 'CC'
 And CertificationLevel = 'Certified'
 And Year <= ",Year,"
-ORDER BY Year DESC",sep="")
+ORDER BY Herd,Year DESC,Timing DESC",sep="")
 StatsDF = GetDataFrame(Sql)
 
 kable(StatsDF)
 
 TableCount = TableCount + 1
 ```
+#### Sex and Age Ratios
 
 ```{r echo=FALSE}
 GraphTitle = paste("Historical sex and age ratios, ",Herd," caribou herd",sep="")
 
-# Abandoned ggplot, too hard to make a graph
-# ggplot(data=StatsDF,aes(x = Year)) +
-#   geom_line(aes(y = `Bulls/100 cows`,colour="black"),size=1, linetype='solid') +
-#   geom_line(aes(y = `Calves/100 cows`,colour="darkgray"), size=1, linetype='solid')  + 
-#   xlab("Year") +
-#   ylab("Ratio (category of caribou:100 cows)") +
-#   ggtitle(GraphTitle) +
-#   scale_color_manual(labels = c("Bulls:100 cows", "Calves:100 cows"), values = c("black", "darkgray"))  + 
-#   theme_classic()
+# Plot the sex and age ratios
+ggplot() +
+  
+  # Bulls/100 cows
+  geom_line(data=StatsDF %>% filter(is.na(`Bulls/100 cows`)==FALSE),aes(x=Year,y = `Bulls/100 cows`, colour="Bulls/100 cows"),size=1, linetype='solid') +
+  
+  # Calves/100 cows
+  geom_line(data=StatsDF %>% filter(is.na(`Calves/100 cows`)==FALSE),aes(x=Year,y = `Calves/100 cows`,colour="Calves/100 cows"),size=1, linetype='solid') +
 
-# Plot the calf/bull/cow ratios
-plot(StatsDF$Year, StatsDF$`Bulls/100 cows`, type = "l", xlab = "Year", ylab = "Ratio",ylim = c(0, 60))                      
-lines(StatsDF$Year, StatsDF$`Calves/100 cows`, type = "l", col = "red")                   # Add second line
-legend("topleft",legend = c("Bulls:100 cows", "Calves:100 cows"), col = c("black", "red"),       lty = 1)
+  xlab("Year") +
+  ylab("Ratio (category of caribou:100 cows)") +
+  #ggtitle(GraphTitle) +
+  #scale_color_manual(labels = c("Bulls:100 cows", "Calves:100 cows"), values = c("black", "darkgray"))  +
+  theme_classic() +
+  scale_colour_manual(name="Legend",  values=c(`Bulls/100 cows`="black",`Calves/100 cows`="darkgray"))
 
 
 FigureCount = FigureCount + 1
@@ -441,37 +443,16 @@ FigureCount = FigureCount + 1
 
 Figure `r FigureCount`. Historical sex and age ratios,  `r Herd` caribou herd.
 
-<!-- ```{r echo=FALSE} -->
 
-<!-- # Plot the bull: cow ratio data -->
-
-<!-- ggplot(data=StatsDF, aes(x=Year, y=`Bulls/100 cows`, group=1)) + -->
-
-<!--   geom_line()+ -->
-
-<!--   geom_point() -->
-
-<!-- FigureCount = FigureCount + 1 -->
-
-<!-- ``` -->
-
-<!-- Figure `r FigureCount`. Bulls/100 cows over time. -->
+#### Herd Composition
 
 ```{r echo=FALSE}
 
 # Plot the absolute numbers
 GraphTitle = paste("Historical sex and age composition as a proportion of total, ", Herd," caribou herd.",sep="")
-# ggplot(data=subset(StatsDF,`Pct. calf` != 100)) + # Subset to get rid of the spring surveys that have 100% calves
-#   #geom_line(aes(x=Year,y = `Pct. calf`, colour = `Pct. calf`)) + # I don't know why colour becomes the legend label, but it does
-#   #geom_line(aes(x=Year,y = `Pct. cow`, colour = `Pct. cow`)) + 
-#   geom_ribbon(aes(x=Year,ymin=0,ymax=`Pct. calf`,colour="black"),fill="black") +
-#   geom_ribbon(aes(x=Year,ymin=`Pct. calf`,ymax=`Pct. calf` + `Pct. bull`,colour="darkgray"),fill="darkgray") +
-#   geom_ribbon(aes(x=Year,ymin=`Pct. bull`,ymax=`Pct. calf` + `Pct. bull`+`Pct. cow`,colour="lightgray"),fill="lightgray") +
-#   labs(title = GraphTitle, color = "Categories\n")+
-#   scale_color_manual(labels = c("Calves","Bulls","Cows"), values = c("black", "darkgray","lightgray"))  + 
-#   theme_classic()
 
-ggplot(data=subset(StatsDF,`Pct. calf` != 100)) + # Subset to get rid of the spring surveys that have 100% calves
+
+ggplot(data=StatsDF %>% filter(Timing == 'Late') %>% arrange(Year,Timing)) + # Subset to get rid of the spring surveys that have 100% calves
   geom_ribbon(aes(x=Year, ymin=0, ymax=`Pct. calf`, fill="Calf")) +
   geom_ribbon(aes(x=Year, ymin=`Pct. calf`, ymax=`Pct. calf` + `Pct. bull`, fill="Bull")) +
   geom_ribbon(aes(x=Year,ymin=`Pct. calf` + `Pct. bull`,ymax=`Pct. calf` + `Pct. bull`+`Pct. cow` ,fill="Cow")) +
