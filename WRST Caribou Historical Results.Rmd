@@ -1,0 +1,89 @@
+---
+title: ''
+output: html_document
+---
+
+
+
+
+```{r setup, include=FALSE}
+
+# Setup
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(RODBC)
+library(sf)
+library(ggplot2)
+
+# WRST Shortcut
+WRST = "Wrangell - St. Elias National Park and Preserve"
+
+# Database connection string
+Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+
+# Function that returns a data frame from an SQL query on the database
+# SQL: A valid SQL query
+GetDataFrame <- function(SQL) { # create a function with the name my_function
+  DF = sqlQuery(Connection,SQL)
+  return(DF)
+}
+
+
+
+```
+
+## WRST Caribou Historical Results
+
+Scott D. Miller\
+Information Technology Specialist/Data Manager\
+National Park Service, Arctic Inventory and Monitoring Network\
+240 W. 5th Ave.\
+Anchorage, AK 99501
+
+Kyle Cutting\
+Wildlife Biologist\
+National Park Service, `r WRST`\
+8 Richardson Hwy Mile 106\
+Copper Center, AK 99573
+
+# Metrics
+
+```{r echo=FALSE}
+
+# Get the summarized data for the comp count survey into a data frame
+Sql = paste("SELECT        Year, Herd, FallSurveyDate, SpringSurveyDate, SpringPopulationEstimate, SpringPopulationEstimateLower, SpringPopulationEstimateUpper, SpringPopulationEstimateMethod, SpringEstimatedCows, SpringPctCow, 
+                         SpringPctCalves, SpringPctBulls, SpringCalvesPer100Cows, SpringBullsPer100Cows, FallEstimatedCalves, FallEstimatedBulls, FallPopulationEstimate, FallPopulationEstimateLower, FallPopulationEstimateUpper, 
+                         FallPopulationEstimateMethod, FallCows, FallCalves, FallBull, FallTotal, FallCalvesPer100Cows, FallBullsPer100Cows, FallPctCow, FallPctCalves, FallPctBulls, FallPctSmallBullsOfBulls, FallPctMediumBullsOfBulls, 
+                         FallPctLargeBullsOfBulls, FallSampleSize, HarvestSubsistence, HarvestSport, HarvestTotal, Notes, SurveyName, SourceID, ResultID
+FROM            Results
+ORDER BY Herd,Year",sep="")
+ResultsDataFrame = GetDataFrame(Sql)
+
+```
+
+# Fall calves per 100 cows
+
+```{r echo=FALSE}
+# Get rid of NA values in the metric at hand
+DF = subset(ResultsDataFrame,!is.na(FallCalvesPer100Cows))
+
+# Create a smaller data frame of just the year, herd and metric
+DF = DF[c("Year","Herd","FallCalvesPer100Cows")]
+
+# Plot the metric
+ggplot(data= DF, aes(x=Year)) +
+  geom_line(aes(y=FallCalvesPer100Cows,linetype=Herd))+
+  theme_classic() + 
+  labs(
+    title="Fall calves: 100 cows"
+    ,subtitle="Chisana and Mentasta caribou herds"
+    , caption="Figure 1. Fall calves per 100 cows, Chisana and Mentasta caribou herds."
+    , x="Year"
+    , y="Fall calves: 100 cows"
+    , color="Herd", fill="Legend Title for fill")
+
+```
+
+
+

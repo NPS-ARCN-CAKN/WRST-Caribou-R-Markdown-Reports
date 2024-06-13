@@ -1,0 +1,66 @@
+---
+title: ""
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+# Setup
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(RODBC)
+library(kableExtra)
+
+```
+
+# Moose Database Documentation
+
+```{r echo=FALSE}
+
+# Database connection string
+Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+
+# Function that returns a data frame from an SQL query on the database
+# SQL: A valid SQL query
+GetDataFrame <- function(SQL) { # create a function with the name my_function
+  DF = sqlQuery(Connection,SQL)
+  return(DF)
+}
+
+# Use the below for sequentially numbering tables and figures
+TableCounter = 1
+FigureCounter = 1
+
+```
+
+
+
+
+
+# Columns Descriptions
+
+```{r echo=FALSE, label = "Dataset columns descriptions."}
+Sql = "SELECT TOP (1000) [Table]
+      ,[Type]
+      ,[Column]
+      ,[ColumnDescription]
+      ,[TableDescription]
+  FROM [WRST_Caribou].[dbo].[DatabaseColumnsDescriptions]"
+DF = GetDataFrame(Sql)
+
+kbl(DF, caption = "Group Rows") %>%
+  kable_paper("striped", full_width = TRUE)
+
+Tables = unique(DF$Table)
+kbl(DF) 
+plot(1,2)
+# Output the table
+# Caption = paste("Table ",TableCounter," ",knitr::opts_current$get()$label,sep="")
+# kable(DF, caption = Caption)
+# TableCounter = TableCounter + 1
+```
+
+
+
+

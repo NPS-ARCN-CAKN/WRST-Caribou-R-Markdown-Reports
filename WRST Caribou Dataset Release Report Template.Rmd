@@ -4,16 +4,15 @@
 Year = 2022 # Year of the comp count survey
 Herd = 'Chisana' # Herd
 #SurveyName = paste(Year," Fall ",Herd," Caribou Composition Survey",sep="") # Change this to the survey name in the WRST Caribou database.
-SurveyName = "2007-10-13 Chisana Caribou Population Survey"
+SurveyName = "2022-10-14 Chisana Caribou Composition Survey"
 
 
 ```
 
 ---
-title: "Results from the `r Year` Composition Count Survey of the `r Herd` Caribou
-  Herd in Wrangell - St. Elias National Park and Preserve, Alaska"
+title: "Dataset Release Report: Abundance and Composition of the Chisana and Mentasta Caribou Herds in Wrangell - St. Elias National Park and Preserve, Alaska"
 author: ""
-date: ""
+date: "`r print(format(Sys.Date(), "%B %d, %Y"))`"
 output:
   html_document:
   toc: yes
@@ -28,9 +27,6 @@ library(knitr)
 library(RODBC)
 library(sf)
 library(ggplot2)
-
-# Restrain the number of decimal places
-options(digits = 1) 
 
 # WRST Shortcut
 WRST = "Wrangell - St. Elias National Park and Preserve"
@@ -149,16 +145,22 @@ CCDF = GetDataFrame(Sql)
 WithCoordinatesDF = subset(CCDF,Lat != "NULL" & Lon != "NULL")
 CCSDF = GetPointSpatialDataFrameFromDataFrame(WithCoordinatesDF,"Lat","Lon")
 
-# Read the shapefile into a spatial features dataset
-# Script users will have to point to a WRST park layer in geographic coordinate system or ask me and I'll send this one
-AKParksShp <- sf::read_sf("C:/Work/GIS Common Layers/GCS/AKParks_reprojected.shp")
+# Park boundaries for the map below are in spatial data files in geojson format are at https://irma.nps.gov/DataStore/Reference/Profile/2303652
+# Create a temporary file on user's hard drive
+tmp_geojson <- tempfile(fileext = ".geojson")
+
+# Download the spatial data file to the temporary file location created above
+download.file("https://irma.nps.gov/DataStore/DownloadFile/702822",tmp_geojson)
+
+# Read the temporary spatial data file into an sf object
+AKParks = read_sf(tmp_geojson)
 
 # Show a map of where caribou groups were found during the survey. Generate a density heat map also.
 #Plot the points over the shapefile (shapefile first, then points)
 ggplot() + 
-  geom_sf(data = AKParksShp) + geom_density_2d(data = CCDF, aes(x = Longitude, y = Latitude), colour = "red", alpha = 0.9) +
+  geom_sf(data=AKParks,fill = "white", color = "black") + 
+  geom_density_2d(data = CCDF, aes(x = Longitude, y = Latitude), colour = "red", alpha = 0.9) +
   geom_sf(data = CCSDF, color='black', size= 1, show.legend = T) +
-  # geom_text(data = CCSDF, size = 3, color = 'red',mapping = aes(CCSDF$Longitude,CCSDF$Latitude,label = CCSDF$SurveyName), vjust = -1,hjust = 0,inherit.aes = FALSE) +
   
   # Density layer
   scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
@@ -195,7 +197,7 @@ CalvesTo100Cows = round(CalvesTo100Cows, digits = 1)
 
 We classified `r Caribou` caribou during the survey. Calf recruitment was `r CalvesTo100Cows` per 100 cows and there were `r BullsTo100Cows` bulls per 100 cows (Tables `r TableCount` and 2).
 
-Table `r TableCount`. Animal counts by sex, size summary, `r SurveyName`.
+Table `r TableCount`. Animal counts by sex, size.
 
 ```{r echo=FALSE}
 CountsSql = paste("SELECT
@@ -244,7 +246,7 @@ CountsSql = paste("SELECT GroupSize_Mean
 , [Pct. large bull (of total bulls)]
 , [Pct. bull (composition survey)]
 , [Pct. bull (population survey)]
---, [Total groups observed] -- When the table is transposed using kable this integer is converted to decimal which looks weird
+, [Total groups observed]
 FROM Summary_Census
 WHERE        ([Survey name] = '",SurveyName,"')",sep="")
 CountsDF = GetDataFrame(CountsSql)
@@ -294,6 +296,9 @@ Values <- c(SmallBull,MediumBull,LargeBull)
 Values[is.na(Values)] = 0 # NAs to 0
 Categories <- c('Sm. Bull','Med. Bull','Lg. Bull') 
 barplot(Values,names.arg = Categories,ylim=c(0,1),main="Bulls composition",ylab="Proportion of total bulls")
+Values
+
+
 
 ```
 
@@ -303,84 +308,19 @@ Figure `r FigureCount`. Herd composition by age and sex, proportion of total car
 FigureCount = FigureCount + 1
 ```
 
-
-## Radiotelemetry 
-
-```{r echo=FALSE}
-RTSql = paste("SELECT  
-[Total collared animals observed] as [Frequencies detected]
-,[Collars not heard or not searched] as [Collars unheard]
-, [Number of frequencies that were available on survey date (Animal_Movement)] as [Available collars]
-FROM Summary_Census
-WHERE ([Survey name] = '",SurveyName,"')",sep="")
-RTDF = GetDataFrame(RTSql)
-AvailableCollars = RTDF$`Available collars`
-FrequenciesDetected = RTDF$`Frequencies detected`
-Unheard = RTDF$`Collars unheard`
-```
-
-There were `r AvailableCollars` collared caribou in the `r Herd` during this survey, of which `r FrequenciesDetected` were detected. Of the available collars, `r Unheard` were undetected. These missing collars may have been out of the survey area, failed in the field or not searched for because of time, weather or logistical constraints.
-
-Table `r TableCount`. Radiotelemetry summary.
-
-```{r echo=FALSE}
-#kable(t(RTDF))
-kable(RTDF,col.names = NA,row.names = FALSE,caption='Table 33. Radiotelemetry summary.')
-# Increment the table counter
-TableCount = TableCount + 1
-
-```
-
-
-## Sightability Metrics
-
-Table `r TableCount`. Sightability results (sightability results are more pertinent to population surveys than composition surveys, but are included here for completeness).
-
-```{r echo=FALSE}
-SightabilitySql = paste("SELECT 
-'--' as [In search area]
-, [Groups in the survey area]
-, [Marked groups in survey area] -- In = 1 And Marked = 1
-, [Marked groups observed in survey area] -- In = 1 And Marked  = 1
-, Convert(Varchar(1000),Format([Pct. marked groups observed in survey area],'##')) + '%' as [Pct. marked groups observed in survey area]
---, [Observed groups in survey area] -- In = 1 And Seen = 1
-
-, '--' as [Out of search area]
-, [Groups out of the survey area]
-
-, '--' as [All groups]
-, [Total groups observed]
-, [Marked groups]
-, [Observed groups]
-, [Marked groups that were observed]
-, [Marked groups that were not observed]
-, iif([Pct. marked groups observed] > 0,Convert(Varchar(1000),Format([Pct. marked groups observed],'##')) + '%',NULL)  as [Pct. marked groups observed]
-, [Total collared animals observed]
-FROM            Summary_Census
-WHERE        ([Survey name] = '",SurveyName,"')",sep="")
-SightabilityDF = GetDataFrame(SightabilitySql)
-
-kable(t(SightabilityDF))
-
-# Increment the table counter
-TableCount = TableCount + 1
-
-```
-
-
 ## Historical Results
 
 Tables `r TableCount` and `r TableCount + 1` provide the most recent survey data compared to the results of past composition count surveys for the `r Herd` herd.
 
 ### Counts
 
-Table `r TableCount`. Historical composition of the `r Herd` herd.
+Table `r TableCount`. Historical composition of the Chisana herd.
 
 ```{r echo=FALSE}
 
 # Grab all the historical comp count data for the herd into a frame and show it
 # Exclude raw data - provisional or certified only
-Sql = paste("SELECT [Year], [Survey type], Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, Adult, Caribou, Unknown, [Total groups observed] as n
+Sql = paste("SELECT [Year], Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, Adult, Caribou, Unknown, [Total groups observed] as n
 FROM            Summary_Census where CertificationLevel = 'Certified'
 And Herd = '",Herd,"' 
 And [Survey type] = 'CC' 
@@ -403,7 +343,7 @@ Table `r TableCount`. Historical sex and age ratios and herd composition statist
 ```{r echo=FALSE}
 # Grab all the historical comp count statistical data for the herd into a frame and show it (the table above shows counts; this table shows calculated stats)
 # Exclude raw data - provisional or certified only
-Sql = paste("SELECT        Year, [Survey type], GroupSize_Mean AS [Mean group size], [Pct. calf], [Pct. cow], [Pct. bull (composition survey)] AS [Pct. bull], [Calves/100 cows], [Bulls/100 cows], [Total groups observed] AS n, [Pct. small bull], 
+Sql = paste("SELECT        Year, GroupSize_Mean AS [Mean group size], [Pct. calf], [Pct. cow], [Pct. bull (composition survey)] AS [Pct. bull], [Calves/100 cows], [Bulls/100 cows], [Total groups observed] AS n, [Pct. small bull], 
                          [Pct. medium bull], [Pct. large bull]
 FROM            Summary_Census
 WHERE Herd = '",Herd,"' And [Survey type] = 'CC'
@@ -439,7 +379,7 @@ legend("topleft",legend = c("Bulls:100 cows", "Calves:100 cows"), col = c("black
 FigureCount = FigureCount + 1
 ```
 
-Figure `r FigureCount`. Historical sex and age ratios,  `r Herd` caribou herd.
+Figure `r FigureCount`. Historical sex and age ratios.
 
 <!-- ```{r echo=FALSE} -->
 
@@ -482,6 +422,48 @@ FigureCount = FigureCount + 1
 ```
 
 Figure `r FigureCount`. `r GraphTitle`.
+
+## Radiotelemetry 
+
+
+
+Table `r TableCount`. Radiotelemetry summary.
+
+```{r echo=FALSE}
+CountsSql = paste("SELECT  
+[Total collared animals observed] as [Frequencies detected]
+,[Collars not heard or not searched] as [Collars unheard]
+, [Number of frequencies that were available on survey date (Animal_Movement)] as [Available collars]
+FROM Summary_Census
+WHERE ([Survey name] = '",SurveyName,"')",sep="")
+CountsDF = GetDataFrame(CountsSql)
+kable(t(CountsDF))
+
+# Increment the table counter
+TableCount = TableCount + 1
+
+```
+
+
+## Sightability Metrics
+
+Table `r TableCount`. Sightability results (sightability results are more pertinent to population surveys than composition surveys, but are included here for completeness).
+
+```{r echo=FALSE}
+SightabilitySql = paste("SELECT [Total groups observed], [Marked groups], [Observed groups], [Marked groups that were observed], [Marked groups that were not observed], [Pct. marked groups observed], 
+                         [Groups in the survey area], [Groups out of the survey area], [Marked groups in survey area], [Observed groups in survey area], [Marked groups observed in survey area], [Pct. marked groups observed in survey area], 
+                         [Total collared animals observed]
+FROM            Summary_Census
+WHERE        ([Survey name] = '",SurveyName,"')",sep="")
+SightabilityDF = GetDataFrame(SightabilitySql)
+kable(t(SightabilityDF))
+
+# Increment the table counter
+TableCount = TableCount + 1
+
+```
+
+
 
 # Discussion
 

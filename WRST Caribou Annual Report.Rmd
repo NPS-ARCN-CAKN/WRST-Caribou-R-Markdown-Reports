@@ -1,0 +1,135 @@
+```{r echo=FALSE}
+
+# Set report parameters
+Year = 2021 # Year of the comp count survey
+Park = 'WRST'
+```
+
+---
+title: "Annual Report: Monitoring the Abundance and Composition of the Chisana and Mentasta Caribou Herds in Wrangell - St. Elias National Park and Preserve, Alaska"
+author: "Scott D. Miller"
+date: "`r Sys.Date()`"
+output:
+  html_document:
+  toc: yes
+---
+
+```{r setup, include=FALSE}
+
+# Setup
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = TRUE)
+library(knitr)
+library(RODBC)
+library(sf)
+library(ggplot2)
+
+# WRST Shortcut
+WRST = "Wrangell - St. Elias National Park and Preserve"
+
+# Database connection string
+Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+
+# Function that returns a data frame from an SQL query on the database
+# SQL: A valid SQL query
+GetDataFrame <- function(SQL) { # create a function with the name my_function
+  DF = sqlQuery(Connection,SQL)
+  return(DF)
+}
+
+
+# Counters to increment the table and figure numbers as the report progresses.
+TableCount = 1
+FigureCount = 1
+
+```
+
+Scott D. Miller\
+Information Technology Specialist/Data Manager\
+National Park Service, Arctic Inventory and Monitoring Network\
+240 W. 5th Ave.\
+Anchorage, AK 99501
+
+Kyle Cutting\
+Wildlife Biologist\
+National Park Service, `r WRST`\
+8 Richardson Hwy Mile 106\
+Copper Center, AK 99573
+
+
+
+
+# Abstract
+
+# Introduction
+
+# Methods
+
+# Results
+
+
+
+Table `r TableCount`. Census surveys accomplished in `r Year`.
+
+```{r echo=FALSE}
+# List out the surveys accomplished
+SurveysDoneDFSQL = paste("SELECT [Survey name],Herd, [Start date], [End date], [Type of survey], [Total groups observed], [Survey days], [Search areas]
+FROM            Summary_Census
+WHERE        (Year = ",Year,") And Park = '",Park,"'
+ORDER BY [Start date] ",sep="")
+SurveysDoneDF = GetDataFrame(SurveysDoneDFSQL)
+
+kable(SurveysDoneDF[,c("Start date","End date","Herd","Type of survey","Total groups observed","Survey days","Search areas")])
+TableCount = TableCount + 1
+
+
+
+
+
+
+```
+
+
+Table `r TableCount`. Radiotracking surveys accomplished in `r Year`.
+
+```{r echo=FALSE}
+# List out the surveys accomplished
+SurveysDoneDFSQL = paste("SELECT TOP (1000) [Herd]
+      ,[Survey date]
+      ,[Animals tracked]
+      ,[Total frequencies available on this date]
+      ,[Mortalities]
+      ,[Active]
+      ,[Mode unknown]
+      ,[Pct mortality]
+  FROM [WRST_Caribou].[dbo].[Summary_Radiotracking] 
+  WHERE YEAR([Survey date])=",Year," ORDER BY [Survey date]",sep="")
+SurveysDoneDF = GetDataFrame(SurveysDoneDFSQL)
+kable(SurveysDoneDF)
+TableCount = TableCount + 1
+```
+
+
+
+
+
+
+
+## Who did it
+Table `r TableCount`. Flight details, `r Year`.
+
+```{r echo=FALSE}
+# Get the survey days and observers into a frame
+Sql = paste("SELECT  DISTINCT Herd,
+CASE WHEN SurveyType = 'PE' THEN 'Population' WHEN SurveyType='CC' THEN 'Composition' END As [Survey type]
+,   SearchArea, CONVERT(Date, SightingDate) AS [Date], Observer1 AS Observer, Pilot
+FROM            CaribouGroups
+WHERE         (Year = ",Year,") And Park = '",Park,"'
+ORDER BY Herd,[Survey type],CONVERT(Date, SightingDate),SearchArea, Observer, Pilot"
+,sep="")
+ObsPilotsDF = GetDataFrame(Sql)
+kable(ObsPilotsDF)
+TableCount = TableCount + 1
+```
+
+# Discussion
