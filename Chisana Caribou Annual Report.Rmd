@@ -1,0 +1,386 @@
+```{r echo=FALSE}
+# Description: 
+# Set report parameters
+Year = 2022 # Year of the Chisana comp count survey
+
+```
+
+---
+title: "Results from the `r Year` Composition Count Survey of the Chisana Caribou
+  Herd in Wrangell - St. Elias National Park and Preserve, Alaska"
+author: ""
+date: ""
+output:
+  html_document:
+  toc: yes
+---
+
+```{r setup, include=FALSE}
+
+# Suppress warnings
+knitr::opts_chunk$set(warning = FALSE, message = FALSE)
+
+# Setup
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = TRUE)
+
+# Libraries
+library(knitr)
+library(RODBC)
+library(sf)
+library(ggplot2)
+library(tidyverse)
+library(SightabilityModel)
+
+# Restrain the number of decimal places
+options(digits = 1) 
+
+# WRST Shortcut
+WRST = "Wrangell - St. Elias National Park and Preserve"
+
+# Database connection string
+Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+
+# Counters to increment the table and figure numbers as the report progresses.
+TableCount = 1
+FigureCount = 1
+
+```
+
+Kyle Cutting\
+Wildlife Biologist\
+National Park Service, `r WRST`\
+8 Richardson Hwy Mile 106\
+Copper Center, AK 99573
+
+Scott D. Miller\
+Information Technology Specialist/Data Manager\
+National Park Service, Arctic Inventory and Monitoring Network\
+240 W. 5th Ave.\
+Anchorage, AK 99501
+
+# Introduction
+
+# Methods
+
+Table X. Counts.
+```{r echo=FALSE}
+
+# Dates
+Sql = paste("-- background
+SELECT        [Start date], [End date], [Survey days], [Search areas]
+FROM            Summary_Census
+WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+
+data = sqlQuery(Connection,Sql)
+data_t = t(data)
+colnames(data_t) = ''
+kable(data_t)
+```
+
+## Distribution Map
+```{r echo=FALSE}
+
+# Get the spatial data for comp and population surveys
+Sql = paste("SELECT        SurveyName, Year, Herd, SurveyType, SearchArea, GroupNumber, SightingDate, Lat, Lon
+, IsNull([In],0) as [In]
+, IsNull(Seen,0) as Seen
+, IsNull(Marked,0) as Marked
+FROM            CaribouGroups
+WHERE (Year = ",Year,") And Herd='Chisana' And Lat > 0",sep="")
+data = sqlQuery(Connection,Sql)
+
+# Convert the data into a spatial data frame
+spdata <- sf::st_as_sf(data, coords = c('Lon','Lat'))
+
+# Set the coordinate system to GCS Lat\Lon WGS1984
+st_crs(spdata) <- st_crs(4326)
+
+# Park boundaries (geojson) are at https://irma.nps.gov/DataStore/Reference/Profile/2303652
+# Create a temporary file on user's hard drive
+tmp_geojson <- tempfile(fileext = ".geojson")
+
+# Download the spatial data file to the temporary file location created above
+download.file("https://irma.nps.gov/DataStore/DownloadFile/702822",tmp_geojson)
+
+# Read the temporary spatial data file into an sf object
+AKParks = read_sf(tmp_geojson)
+
+# Show a map of where caribou groups were found during the survey. Generate a density heat map also.
+#Plot the points over the shapefile (shapefile first, then points)
+ggplot() + 
+  
+  # Park boundary
+  geom_sf(data = AKParks,fill = "white", color = "black") + 
+  
+  # Caribou kernel density
+  geom_density_2d(data = data, aes(x = Lon, y = Lat), colour = "red", alpha = 0.9) +
+  
+  # Caribou observations
+  geom_sf(data = spdata, aes(color=factor(Marked)), size= 1, show.legend = T) +
+  scale_color_manual(values = c("black","darkgray"))  +
+  guides(color=guide_legend(title="Marked (1=True,0=False)")) +
+  
+  # Adjust colors
+  scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
+  guides(fill = guide_legend(title = "Density of observations")) + # This gives a legend to the density
+  
+  # Limit the view port to just WRST
+  xlim(-146.5,-139) +
+  ylim(59.8,62.65) +
+  #ggtitle(paste("Caribou observations distribution and density",sep="") ,subtitle = CompDF$`Start date`) +
+  
+  # Label axes
+  xlab('Longitude') + ylab('Latitude') +
+  
+  ggtitle('Distribution of Chisana herd during survey') +
+  
+  # Clean look
+  theme_classic()
+
+```
+
+# Results
+
+## Counts
+
+Table X. Counts.
+```{r echo=FALSE}
+
+# Raw counts
+Sql = paste("SELECT Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, Adult, Caribou, Unknown, [Total groups observed], [Minimum group size], [Maximum group size], Marked, Seen, [Marked and Seen], [Marked and Not Seen], 
+ [Groups in the survey area], [Groups out of the survey area], [Total collared animals observed]
+FROM Summary_Census
+WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+
+data = sqlQuery(Connection,Sql)
+data_t = t(data)
+colnames(data_t) = 'Counts'
+kable(data_t)
+```
+
+## Composition
+
+Table X. Composition.
+```{r echo=FALSE}
+
+# Raw counts
+Sql = paste("SELECT        [Calves/100 cows], [Bulls/100 cows], [Pct. calf], [Pct. cow], [Pct. small bull], [Pct. medium bull], [Pct. large bull], [Pct. small bull (of total bulls)], [Pct. medium bull (of total bulls)], [Pct. large bull (of total bulls)], 
+                         [Pct. bull (composition survey)], [Total groups observed], GroupSize_Mean, [Minimum group size], [Maximum group size]
+FROM            Summary_Census
+WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+
+data = sqlQuery(Connection,Sql)
+data_t = t(data)
+colnames(data_t) = 'Composition'
+kable(data_t)
+```
+
+## Population Estimate
+
+Note: 2024-06-27 SDMiller: I'm still working out how to run this analysis by trying to reproduce the 2010 Chisana Report put out by Yukon (https://irma.nps.gov/DataStore/DownloadFile/566074)[https://irma.nps.gov/DataStore/DownloadFile/566074]
+Example code at J:\Monitoring\Caribou\WRST\Historical Files from Copper Center\Electronic\Chisana\SightabilityModel
+
+Note: Population estimates can only be calculated if sightability information is collected. The next R chunk executes the QC_CaribouGroups_SurveysWithNoSightabilityInformation query to determine if sightability information exists. If sightability information exists you will get a corrected population estimate, otherwise a minimum count.
+
+```{r echo=FALSE}
+# We cannot calculate a population estimate based on sightability if no sightability information was collected.
+# The two required columns are Marked (whether GPS collared animal(s) were in the group), and Seen, whether the caribou group was observed, or missed.
+# If the survey in question shows up in the query then a sightability corrected estimate is not possible
+Sql = paste("SELECT  [Herd]
+      ,[Year]
+      ,[Marked]
+      ,[Seen]
+      ,[SurveyName]
+  FROM [QC_CaribouGroups_SurveysWithNoSightabilityInformation]
+WHERE Herd='Chisana' and Year = ",Year,sep="")
+data = sqlQuery(Connection,Sql)
+
+```
+
+
+```{r echo = FALSE}
+
+# If the survey shows up in the list of surveys with no sightability data (above) then we can't calculate a corrected population estimate.
+# Show a minimum count
+if (nrow(data) > 0){
+
+  # No sightability info was collected for this survey
+  print(paste('Sightability information was not collected for the Chisana herd for ',Year,sep=''))
+  print('Sightability information appears in the table below')
+  kable(data)
+  
+  print('A minimum count estimate (uncorrected) is possible')
+  Sql = paste("SELECT Caribou as [Minimum count total] FROM Summary_Census WHERE Herd='Chisana' and Year = ",Year,"",sep="")
+  kable(sqlQuery(Connection,Sql))
+
+}else{
+  
+  # Calculate a sightability corrected population estimate
+  print('Sightability information exists for this survey')
+  
+  # Observational dataset
+  # Note: For some reason Total and Grp_Size are both needed by SightabilityModel R package, even though they are duplicative
+  Sql = paste("SELECT  1 as stratum,[Total] as total, 1 as subunit,[Grp_Size] FROM [WRST_Caribou].[dbo].[Sightability_odat] 
+  WHERE Herd='Chisana' 
+  And Year = ",Year,"
+  And [In] = 1 -- This can screw up the pop est if it's all NULLs.
+  ",sep="")
+  odat = sqlQuery(Connection,Sql)
+  
+  # Sightability dataset
+  Sql = paste("SELECT   ID, Observed, Grp_Size FROM  Sightability_sdat WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+  sdat = sqlQuery(Connection,Sql)
+  
+  # Sampling info dataset (essentially all 1s, generate on the fly)
+  stratum <- 1
+  Nh = 1
+  nh = 1
+  sampinfo <- data.frame(stratum,Nh,nh)
+  
+  #Code to fit a sightability model using group size as a covariate
+  # Choose the model with the smallest AIC
+  fit.group.size <- Sight.Est(form=Observed ~ Grp_Size,sdat=sdat,odat=odat,sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+  fit.group.size #Provides the results from the model fitting
+  print(fit.group.size)
+  Summary = summary(fit.group.size)
+  Estimate = Summary$tau.hat
+  UpperEstimate = Summary$ucl
+  LowerEstimate = Summary$lcl
+  print(paste("Estimate (group size): ",Estimate," (",LowerEstimate," - ",UpperEstimate,")"))
+  
+  #Code to fit a sightability model having a constant sightability (assumes 100% sightability?)
+   # Choose the model with the smallest AIC
+  fit.constant<-Sight.Est(form=Observed ~ 1, sdat=sdat, odat=odat, sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+  fit.constant  #Provides the results
+  print(fit.constant)
+  Summary = summary(fit.constant)
+  Estimate = Summary$tau.hat
+  UpperEstimate = Summary$ucl
+  LowerEstimate = Summary$lcl
+  print(paste("Estimate (assumes 100% sightability): ",Estimate," (",LowerEstimate," - ",UpperEstimate,")"))
+  
+  
+  #The AICc for the constant model is lower than for the Group Size model so I chose the contant model as most supported.
+  # Sight.Est doesn't calculate AICc (the small sample correction for AIC), I did that myself.
+  
+  #To get the actual sightability correction factor use the following codes
+  #This fits the sightability model
+  fit.glm <- glm(Observed~1, data=sdat, family=binomial()) 
+  
+  #This gives you the sightability correction factor (theta)
+  theta.SS <- 1+exp(-coef(fit.glm)-summary(fit.glm)$cov.unscaled/2) 
+  theta.SS # Provides the actual number
+}
+
+
+```
+
+
+# Historical Results
+
+```{r echo=FALSE}
+
+# Get the chisana population estimates from the reports to build a chart of population size over time
+Sql = paste("SELECT Year
+, SourceID
+, [Herd (report)]
+, FallSurveyDate
+, FallEstimatedBulls
+, FallPopulationEstimate
+, FallPopulationEstimateLower
+, FallPopulationEstimateUpper
+, FallPopulationEstimateMethod
+, FallCows, FallCalves
+, FallEstimatedCalves
+, FallBull
+, FallTotal
+, FallCalvesPer100Cows
+, FallBullsPer100Cows
+, FallPctCow
+, FallPctCalves
+, FallPctBulls
+, FallPctSmallBullsOfBulls
+, FallPctMediumBullsOfBulls
+, FallPctLargeBullsOfBulls
+, FallSampleSize
+, ReportYear
+, Herd
+, Agency
+, EarliestContentYear
+, LatestContentYear
+, Citation
+,ResultsValidatedDate
+FROM            Summary_ChisanaHistoricalSurveyResults
+ORDER BY Year, SourceID
+",sep="")
+data = sqlQuery(Connection,Sql)
+
+# Source data reports
+# Sql = paste("SELECT Citation,SourceID FROM Reports WHERE SourceID in (54,46,47)",sep="")
+# sourcesDataFrame = sqlQuery(Connection,Sql)
+
+```
+
+
+```{r echo=FALSE}
+
+ggplot(
+  data %>% filter(FallBullsPer100Cows > 0)
+  ) +
+  geom_point(aes(x=Year,y=FallCalvesPer100Cows,shape=factor(SourceID))) +
+  geom_point(aes(x=Year,y=FallBullsPer100Cows,shape=factor(SourceID))) +
+  
+  geom_line(aes(x=Year,y=FallBullsPer100Cows,linetype='solid')) +
+  geom_line(aes(x=Year,y=FallCalvesPer100Cows,linetype='dashed')) +
+  geom_hline(aes(yintercept=35,linetype='dotted')) + # Mgmt goal 35 bulls/100 cows
+  geom_hline(aes(yintercept=15),linetype='dotted') + # Mgmt goal 15 calves/100 cows
+  
+  theme_minimal() +
+  ylab("Sex and age ratios (per 100 cows)") +   # Y axis label
+  xlab("Year") +# X axis label
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + # Make X axis labels vertical
+  scale_x_continuous(breaks = seq(1978, max(data$Year), by = 2)) + # Set the X axis scale
+  
+  # Manually adjust points 
+  scale_shape_discrete(name="Source", breaks=c("46", "47", "54","999"), labels=c("Cutting, 2023", "Hegel, et al., 2014", "Chisana Caribou Herd\n Working Group, 2012","WRST")) +
+  
+# Manually adjust lines 
+  scale_linetype_discrete(name="Ratio", breaks=c("solid","dashed"), labels=c("Bulls/100 cows","Calves/100 cows"))
+  
+```
+
+Figure X. Chisana sex and age ratios over time. Dotted horizontal lines show the management goals of 35 bulls/100 cows and 15 calves/100 cows.
+
+```{r echo=FALSE}
+
+ggplot(
+  data %>% filter(SourceID == 54 | SourceID == 46 | SourceID == 47) %>% # These are the good, valid reports
+  filter(!(SourceID == 54 & Year > 2002))  # Exclude CCH working group estimates after 2002, USGS estimates in Hegel duplicates these estimates and have error bars
+  ) +
+  geom_point(aes(x=Year,y=FallPopulationEstimate,shape=factor(SourceID))) +
+  geom_line(aes(x=Year,y=FallPopulationEstimate)) +
+  geom_errorbar(aes(x=Year,ymin=FallPopulationEstimateLower,ymax=FallPopulationEstimateUpper)) +
+  
+  theme_minimal() +
+  ylab("Population Estimate") +   # Y axis label
+  xlab("Year") +# X axis label
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + # Make X axis labels vertical
+  scale_y_continuous(breaks = seq(0, 2000, by = 100)) + # Set the X axis scale
+  scale_x_continuous(breaks = seq(1978, max(data$Year), by = 2)) + # Set the X axis scale
+  #guides(shape=guide_legend(title="Source")) +
+  scale_shape_discrete(name="Source",
+                         breaks=c("46", "47", "54"),
+                         labels=c("Cutting (2023)", "Hegel, et al. (2014)", "Chisana Caribou Herd\n Working Group (2012)"))
+  
+```
+
+Figure X. Sex and age ratios over time. Captive rearing program was begun in 2003 (CCHWG, 2012).
+
+# References
+
+Chisana Caribou Herd Working Group. 2012. Management plan for the Chisana caribou herd: 2010-2015. Government of Yukon Department of Environment Whitehorse, YT. 48pp.
+
+Cutting, K. 2023. WRANGELL-ST. ELIAS NATIONAL PARK AND PRESERVE WILDLIFE REPORT, Spring, 2023. Unpublished Report. United States Department of the Interior. National Park Service. Copper Center, AK.
+
+HEGEL, T., T. BENTZEN, R. DRUMMOND, J. PUTERA, S. TAYLOR, AND J. WELLS. 2014. Chisana caribou herd population estimate, 2013. Yukon Fish and Wildlife Branch Report TR-14-XX. Whitehorse, Yukon, Canada.
