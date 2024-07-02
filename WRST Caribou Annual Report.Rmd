@@ -1,7 +1,8 @@
+
 ```{r echo=FALSE}
 
 # Set report parameters
-Year = 2021 # Year of the comp count survey
+Year = 2010 # Year 
 Park = 'WRST'
 ```
 
@@ -23,6 +24,8 @@ library(knitr)
 library(RODBC)
 library(sf)
 library(ggplot2)
+library(SightabilityModel)
+library(tidyverse)
 
 # WRST Shortcut
 WRST = "Wrangell - St. Elias National Park and Preserve"
@@ -30,25 +33,11 @@ WRST = "Wrangell - St. Elias National Park and Preserve"
 # Database connection string
 Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
 
-# Function that returns a data frame from an SQL query on the database
-# SQL: A valid SQL query
-GetDataFrame <- function(SQL) { # create a function with the name my_function
-  DF = sqlQuery(Connection,SQL)
-  return(DF)
-}
-
-
 # Counters to increment the table and figure numbers as the report progresses.
 TableCount = 1
 FigureCount = 1
 
 ```
-
-Scott D. Miller\
-Information Technology Specialist/Data Manager\
-National Park Service, Arctic Inventory and Monitoring Network\
-240 W. 5th Ave.\
-Anchorage, AK 99501
 
 Kyle Cutting\
 Wildlife Biologist\
@@ -56,28 +45,248 @@ National Park Service, `r WRST`\
 8 Richardson Hwy Mile 106\
 Copper Center, AK 99573
 
-
-
+Scott D. Miller\
+Information Technology Specialist/Data Manager\
+National Park Service, Arctic Inventory and Monitoring Network\
+240 W. 5th Ave.\
+Anchorage, AK 99501
 
 # Abstract
 
 # Introduction
 
+## Chisana Surveys History
+
+### 1987-2002
+Chisana 87-2002 pop est used late june minimum counts, and fall sex and age composition, recruitment and mortality data using adfg model
+
+### 2003-2006
+Captive rearing 2003-6. All animals collared and released. (208 animals). USGS implemented fall censos technique correcting for undetected caribou using radiocollared animals.
+
+# Objectives
+
+For each herd monitor
+-   Sex ratios  
+-   Calf recruitment  
+-   Population size  
+
+## Mentasta Surveys History
+
+
 # Methods
 
 # Results
 
+## Chisana
 
+### Herd Distribution Map
+
+Caribou were distributed as shown in Figure `r FigureCount`.
+
+```{r echo=FALSE}
+
+# Get the spatial data for comp and population surveys
+Sql = paste("SELECT        SurveyName, Year, Herd, SurveyType, SearchArea, GroupNumber, SightingDate, Lat, Lon, [In], Seen, Marked
+FROM            CaribouGroups
+WHERE (Year = ",Year,") And Herd='Chisana' And Lat > 0",sep="")
+data = sqlQuery(Connection,Sql)
+
+# Convert the data into a spatial data frame
+spdata <- sf::st_as_sf(data, coords = c('Lon','Lat'))
+
+# Set the coordinate system to GCS Lat\Lon WGS1984
+st_crs(spdata) <- st_crs(4326)
+
+# Park boundaries (geojson) are at https://irma.nps.gov/DataStore/Reference/Profile/2303652
+# Create a temporary file on user's hard drive
+tmp_geojson <- tempfile(fileext = ".geojson")
+
+# Download the spatial data file to the temporary file location created above
+download.file("https://irma.nps.gov/DataStore/DownloadFile/702822",tmp_geojson)
+
+# Read the temporary spatial data file into an sf object
+AKParks = read_sf(tmp_geojson)
+
+# Show a map of where caribou groups were found during the survey. Generate a density heat map also.
+#Plot the points over the shapefile (shapefile first, then points)
+ggplot() + 
+  
+  # Park boundary
+  geom_sf(data = AKParks,fill = "white", color = "black") + 
+  
+  # Caribou kernel density
+  geom_density_2d(data = data, aes(x = Lon, y = Lat), colour = "red", alpha = 0.9) +
+  
+  # Caribou observations
+  geom_sf(data = spdata, aes(color=factor(Marked)), size= 1, show.legend = T) +
+  scale_color_manual(values = c("black","darkgray"))  +
+  guides(color=guide_legend(title="Marked (1=True,0=False)")) +
+  
+  # Adjust colors
+  scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
+  guides(fill = guide_legend(title = "Density of observations")) + # This gives a legend to the density
+  
+  # Limit the view port to just WRST
+  xlim(-146.5,-139) +
+  ylim(59.8,62.65) +
+  #ggtitle(paste("Caribou observations distribution and density",sep="") ,subtitle = CompDF$`Start date`) +
+  
+  # Label axes
+  xlab('Longitude') + ylab('Latitude') +
+  
+  ggtitle('Distribution of Chisana herd during survey') +
+  
+  # Clean look
+  theme_classic()
+
+```
+
+### Results
+
+Table X. Caribou observations summary.
+
+```{r echo=FALSE}
+
+# Results of the Chisana Comp. Survey - Raw counts
+Sql = paste("SELECT 
+Cow
+, Calf
+, [Small bull]
+, [Medium bull]
+, [Large bull]
+, Bull, Adult
+, Caribou
+, IsNull(Unknown,0) as Unknown
+, [Minimum group size]
+, [Maximum group size]
+, [Total groups observed]
+, Marked
+, Seen
+, [Total collared animals observed]
+, [Number of frequencies that were available on survey date (Animal_Movement)]
+FROM            Summary_Census
+WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+data = sqlQuery(Connection,Sql)
+data_t = t(data)
+colnames(data_t) = "Result"
+kable(data_t)
+
+```
+
+Table X. Summary statistics
+
+```{r echo=FALSE}
+# Results of the Chisana Comp. Survey - Stats
+Sql = paste("SELECT 
+[Calves/100 cows]
+, [Bulls/100 cows]
+, [Pct. calf]
+, [Pct. cow]
+, [Pct. bull (composition survey)] as [Pct. bull]
+, [Pct. small bull]
+, [Pct. medium bull]
+, [Pct. large bull]
+, [Pct. small bull (of total bulls)]
+, [Pct. medium bull (of total bulls)]
+, [Pct. large bull (of total bulls)]
+, GroupSize_Mean
+
+--, [Type of survey], Timing,[Survey name]
+FROM            Summary_Census
+WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+data = sqlQuery(Connection,Sql)
+data_t = t(data)
+colnames(data_t) = "Result"
+kable(data_t)
+
+```
+
+### Population Estimate
+
+Note: 2024-06-27 SDMiller: I'm still working out how to run this analysis by trying to reproduce the 2010 Chisana Report put out by Yukon (https://irma.nps.gov/DataStore/DownloadFile/566074)[https://irma.nps.gov/DataStore/DownloadFile/566074]
+Example code at J:\Monitoring\Caribou\WRST\Historical Files from Copper Center\Electronic\Chisana\SightabilityModel
+
+```{r echo=FALSE}
+# Observational dataset
+# Note: For some reason Total and Grp_Size are both needed by SightabilityModel R package, even though they are duplicative
+Sql = paste("SELECT  1 as stratum,[Total] as total, 1 as subunit,[Grp_Size] FROM [WRST_Caribou].[dbo].[Sightability_odat] WHERE Herd='Chisana' and Year = ",Year," And [In] = 1",sep="")
+odat = sqlQuery(Connection,Sql)
+
+# Sightability dataset
+Sql = paste("SELECT   ID, Observed, Grp_Size FROM  Sightability_sdat WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+sdat = sqlQuery(Connection,Sql)
+
+# Sampling info dataset (essentially all 1s, generate on the fly)
+stratum <- 1
+Nh = 1
+nh = 1
+sampinfo <- data.frame(stratum,Nh,nh)
+
+#Code to fit a sightability model using group size as a covariate
+fit.group.size <- Sight.Est(form=Observed ~ Grp_Size,sdat=sdat,odat=odat,sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+fit.group.size #Provides the results from the model fitting
+
+#Code to fit a sightability model having a constant sightability (assumes 100% sightability?)
+fit.constant<-Sight.Est(form=Observed ~ 1, sdat=sdat, odat=odat, sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+fit.constant  #Provides the results
+
+#The AICc for the constant model is lower than for the Group Size model so I chose the contant model as most supported.
+# Sight.Est doesn't calculate AICc (the small sample correction for AIC), I did that myself.
+
+#To get the actual sightability correction factor use the following codes
+#This fits the sightability model
+fit.glm <- glm(Observed~1, data=sdat, family=binomial()) 
+
+#This gives you the sightability correction factor (theta)
+theta.SS <- 1+exp(-coef(fit.glm)-summary(fit.glm)$cov.unscaled/2) 
+theta.SS # Provides the actual number
+
+```
+
+
+### Sex and Age Ratios
+
+One of the purposes of the management plan is to allow a small harvest provided the herd remains stable and meets a minimum ratio of ≥ 35 bulls per 100 cows each year, and an observed 3-year average of ≥ 15 calves per 100 cows
+
+```{r echo=FALSE}
+Sql = "SELECT        Herd,Year, [Survey name], [Survey type], [Type of survey], Timing, Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, BullsWereCategorized, Adult, Caribou, Unknown, [Calves/100 cows], [Bulls/100 cows]
+FROM            Summary_Census
+WHERE Herd='Chisana' And [Survey type]='CC'
+ORDER BY Herd,Year, [Survey name]"
+
+data = sqlQuery(Connection,Sql)
+
+ggplot(data) +
+  geom_line(aes(x=Year,y=`Bulls/100 cows`,linetype = 'Bulls/100 cows')) +
+  geom_line(aes(x=Year,y=`Calves/100 cows`,linetype = 'Calves/100 cows')) +
+  geom_hline(yintercept=35, linetype='solid')+
+  geom_hline(yintercept=15, linetype='solid')+
+
+  guides(linetype=guide_legend(title="")) +
+
+  # Make X axis labels vertical
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) +
+  
+  theme_minimal() +  
+  
+  # Y axis label
+  ylab("Ratio") +
+  
+  # X axis label
+  xlab("Year") 
+```
+
+Figure X. Sex and age ratios over time for the Chisana caribou herd. The top solid horizontal line represents the goal bulls/100 cows ratio, and the bottom solid horizontal line represents the goal calves/100 cows ratio.
 
 Table `r TableCount`. Census surveys accomplished in `r Year`.
 
 ```{r echo=FALSE}
 # List out the surveys accomplished
-SurveysDoneDFSQL = paste("SELECT [Survey name],Herd, [Start date], [End date], [Type of survey], [Total groups observed], [Survey days], [Search areas]
+Sql = paste("SELECT [Survey name],Herd, [Start date], [End date], [Type of survey], [Total groups observed], [Survey days], [Search areas]
 FROM            Summary_Census
 WHERE        (Year = ",Year,") And Park = '",Park,"'
 ORDER BY [Start date] ",sep="")
-SurveysDoneDF = GetDataFrame(SurveysDoneDFSQL)
+SurveysDoneDF = sqlQuery(Connection,Sql)
 
 kable(SurveysDoneDF[,c("Start date","End date","Herd","Type of survey","Total groups observed","Survey days","Search areas")])
 TableCount = TableCount + 1
@@ -89,12 +298,11 @@ TableCount = TableCount + 1
 
 ```
 
-
 Table `r TableCount`. Radiotracking surveys accomplished in `r Year`.
 
 ```{r echo=FALSE}
 # List out the surveys accomplished
-SurveysDoneDFSQL = paste("SELECT TOP (1000) [Herd]
+Sql = paste("SELECT TOP (1000) [Herd]
       ,[Survey date]
       ,[Animals tracked]
       ,[Total frequencies available on this date]
@@ -104,11 +312,10 @@ SurveysDoneDFSQL = paste("SELECT TOP (1000) [Herd]
       ,[Pct mortality]
   FROM [WRST_Caribou].[dbo].[Summary_Radiotracking] 
   WHERE YEAR([Survey date])=",Year," ORDER BY [Survey date]",sep="")
-SurveysDoneDF = GetDataFrame(SurveysDoneDFSQL)
+SurveysDoneDF = sqlQuery(Connection,Sql)
 kable(SurveysDoneDF)
 TableCount = TableCount + 1
 ```
-
 
 Table `r TableCount`. Flight details, `r Year`.
 
@@ -121,7 +328,7 @@ FROM            CaribouGroups
 WHERE         (Year = ",Year,") And Park = '",Park,"'
 ORDER BY Herd,[Survey type],CONVERT(Date, SightingDate),SearchArea, Observer, Pilot"
 ,sep="")
-ObsPilotsDF = GetDataFrame(Sql)
+ObsPilotsDF = sqlQuery(Connection,Sql)
 kable(ObsPilotsDF)
 TableCount = TableCount + 1
 ```
