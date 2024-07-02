@@ -1,6 +1,9 @@
 ```{r echo=FALSE}
-# Description: 
-# Set report parameters
+# Author: NPS\SDMiller
+# Date: July, 2024
+# Description: This R Markdown script generates an annual report template for a population size/herd composition survey for the Chisana caribou herd in WRST. The report template will be delivered in the same directory as this .rmd file as a .html file. Open this file in Microsoft Word, edit/augment it, and save.
+
+# Set the desired year for the report
 Year = 2022 # Year of the Chisana comp count survey
 
 ```
@@ -42,8 +45,8 @@ WRST = "Wrangell - St. Elias National Park and Preserve"
 Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
 
 # Counters to increment the table and figure numbers as the report progresses.
-TableCount = 1
-FigureCount = 1
+TableCounter = 1
+FigureCounter = 1
 
 ```
 
@@ -61,9 +64,15 @@ Anchorage, AK 99501
 
 # Introduction
 
+[To be written]
+
 # Methods
 
-Table X. Counts.
+[To be written]
+
+R sightability package
+
+Table X. Survey dates
 ```{r echo=FALSE}
 
 # Dates
@@ -78,7 +87,12 @@ colnames(data_t) = ''
 kable(data_t)
 ```
 
+# Results
+
 ## Distribution Map
+
+Figure `r FigureCounter` shows the distribution of animals observed during the `r Year` Chisana caribou survey in `r WRST`.
+
 ```{r echo=FALSE}
 
 # Get the spatial data for comp and population surveys
@@ -139,13 +153,17 @@ ggplot() +
   theme_classic()
 
 ```
+Figure `r FigureCounter`. Distribution of animals observed in `r WRST` during the `r Year` Chisana caribou survey. Marked caribou (GPS collared animal) are shown with black dots, unmarked animals with gray dots. Kernel density contours are shown in red to give an idea of the range of caribou on the day of the survey.
 
-# Results
+Table `r TableCounter` summarizes the results of the `r Year` Chisana caribou survey in `r WRST` by age and sex classes, and summarizes mark/recapture results.
 
-## Counts
 
-Table X. Counts.
+Table `r TableCounter`. Number of animals inventoried during the `r Year` Chisana caribou survey in `r WRST` by age and sex classes and mark/recapture results.
+
 ```{r echo=FALSE}
+# Increment the counters
+FigureCounter = FigureCounter + 1
+TableCounter = TableCounter + 1
 
 # Raw counts
 Sql = paste("SELECT Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, Adult, Caribou, Unknown, [Total groups observed], [Minimum group size], [Maximum group size], Marked, Seen, [Marked and Seen], [Marked and Not Seen], 
@@ -161,7 +179,9 @@ kable(data_t)
 
 ## Composition
 
-Table X. Composition.
+Table `r TableCounter` provides a summary of the composition of the Chisana caribou during the `r Year` survey.
+
+Table `r TableCounter`. Chisana herd composition summary.
 ```{r echo=FALSE}
 
 # Raw counts
@@ -316,10 +336,6 @@ ORDER BY Year, SourceID
 ",sep="")
 data = sqlQuery(Connection,Sql)
 
-# Source data reports
-# Sql = paste("SELECT Citation,SourceID FROM Reports WHERE SourceID in (54,46,47)",sep="")
-# sourcesDataFrame = sqlQuery(Connection,Sql)
-
 ```
 
 
@@ -383,4 +399,8 @@ Chisana Caribou Herd Working Group. 2012. Management plan for the Chisana caribo
 
 Cutting, K. 2023. WRANGELL-ST. ELIAS NATIONAL PARK AND PRESERVE WILDLIFE REPORT, Spring, 2023. Unpublished Report. United States Department of the Interior. National Park Service. Copper Center, AK.
 
+Fieberg, J. Estimating Population Abundance Using Sightability Models: R SightabilityModel Package. Minnesota Department of Natural Resources.(https://cran.r-project.org/web/packages/SightabilityModel/vignettes/a-SightabilityModel.pdf)[https://cran.r-project.org/web/packages/SightabilityModel/vignettes/a-SightabilityModel.pdf]
+
 HEGEL, T., T. BENTZEN, R. DRUMMOND, J. PUTERA, S. TAYLOR, AND J. WELLS. 2014. Chisana caribou herd population estimate, 2013. Yukon Fish and Wildlife Branch Report TR-14-XX. Whitehorse, Yukon, Canada.
+
+R sightability package
