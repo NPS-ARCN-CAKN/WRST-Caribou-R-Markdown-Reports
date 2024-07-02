@@ -105,7 +105,7 @@ The National Park Service has monitored the population and composition of the Ch
 
 # Results
 
-## Distribution Map
+## Herd Distribution
 
 Figure `r FigureCounter` shows the distribution of animals observed during the `r Year` Chisana caribou survey in `r WRST`.
 
@@ -193,7 +193,7 @@ colnames(data_t) = 'Counts'
 kable(data_t)
 ```
 
-## Composition
+## Herd Composition
 
 Table `r TableCounter` provides a summary of the composition of the Chisana caribou during the `r Year` survey.
 
@@ -312,8 +312,53 @@ if (nrow(data) > 0){
 
 ```
 
+## Population Trend
 
-# Historical Results
+```{r echo=FALSE}
+
+# Get the chisana population estimates from the reports to build a chart of population size over time
+Sql = "SELECT Year
+, SourceID
+, [Herd (report)]
+, FallSurveyDate
+, FallPopulationEstimate
+, FallPopulationEstimateLower
+, FallPopulationEstimateUpper
+, FallPopulationEstimateMethod
+, FallTotal
+, FallSampleSize
+, ReportYear
+, Herd
+, Agency
+, EarliestContentYear
+, LatestContentYear
+, Citation
+, ResultsValidatedDate
+FROM Summary_Chisana_PopulationSize
+ORDER BY Year"
+data = sqlQuery(Connection,Sql)
+
+ggplot(data ) +
+  geom_point(aes(x=Year,y=FallPopulationEstimate,shape=factor(SourceID))) +
+  geom_line(aes(x=Year,y=FallPopulationEstimate)) +
+  geom_errorbar(aes(x=Year,ymin=FallPopulationEstimateLower,ymax=FallPopulationEstimateUpper)) +
+  
+  theme_minimal() +
+  ylab("Population Estimate") +   # Y axis label
+  xlab("Year") +# X axis label
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + # Make X axis labels vertical
+  scale_y_continuous(breaks = seq(0, 2000, by = 100)) + # Set the X axis scale
+  scale_x_continuous(breaks = seq(1978, max(data$Year), by = 2)) + # Set the X axis scale
+  #guides(shape=guide_legend(title="Source")) +
+  scale_shape_discrete(name="Source",
+                         breaks=c("46", "47", "54"),
+                         labels=c("Cutting (2023)", "Hegel, et al. (2014)", "Chisana Caribou Herd\n Working Group (2012)"))
+  
+```
+
+Figure X. Chisana herd estimated population over time. Captive rearing program was begun in 2003 (CCHWG, 2012).
+
+# Herd Composition Trends
 
 ```{r echo=FALSE}
 
@@ -363,50 +408,6 @@ Key to data sources:
 ```{r echo=FALSE}
 kable(sources %>% select(ID,`Data source`) %>% arrange(ID))
 ```
-
-```{r echo=FALSE}
-
-# Get the chisana population estimates from the reports to build a chart of population size over time
-Sql = "SELECT Year
-, SourceID
-, [Herd (report)]
-, FallSurveyDate
-, FallPopulationEstimate
-, FallPopulationEstimateLower
-, FallPopulationEstimateUpper
-, FallPopulationEstimateMethod
-, FallTotal
-, FallSampleSize
-, ReportYear
-, Herd
-, Agency
-, EarliestContentYear
-, LatestContentYear
-, Citation
-, ResultsValidatedDate
-FROM Summary_Chisana_PopulationSize
-ORDER BY Year"
-data = sqlQuery(Connection,Sql)
-
-ggplot(data ) +
-  geom_point(aes(x=Year,y=FallPopulationEstimate,shape=factor(SourceID))) +
-  geom_line(aes(x=Year,y=FallPopulationEstimate)) +
-  geom_errorbar(aes(x=Year,ymin=FallPopulationEstimateLower,ymax=FallPopulationEstimateUpper)) +
-  
-  theme_minimal() +
-  ylab("Population Estimate") +   # Y axis label
-  xlab("Year") +# X axis label
-  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) + # Make X axis labels vertical
-  scale_y_continuous(breaks = seq(0, 2000, by = 100)) + # Set the X axis scale
-  scale_x_continuous(breaks = seq(1978, max(data$Year), by = 2)) + # Set the X axis scale
-  #guides(shape=guide_legend(title="Source")) +
-  scale_shape_discrete(name="Source",
-                         breaks=c("46", "47", "54"),
-                         labels=c("Cutting (2023)", "Hegel, et al. (2014)", "Chisana Caribou Herd\n Working Group (2012)"))
-  
-```
-
-Figure X. Chisana herd estimated population over time. Captive rearing program was begun in 2003 (CCHWG, 2012).
 
 # References
 
