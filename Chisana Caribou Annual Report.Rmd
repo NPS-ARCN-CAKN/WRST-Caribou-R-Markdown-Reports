@@ -81,11 +81,27 @@ SELECT        [Start date], [End date], [Survey days], [Search areas]
 FROM            Summary_Census
 WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
 
+# Get a data frame 
 data = sqlQuery(Connection,Sql)
-data_t = t(data)
-colnames(data_t) = ''
-kable(data_t)
+
+# Get the survey dates into variables
+StartDate = format(as.Date(data$`Start date`), format="%B %d")
+EndDate = format(as.Date(data$`End date`), format="%B %d, %Y")
+NumberOfSurveyDays = data$`Survey days`
+
+# Paste together an opening blurp describing the survey and dates.
+if (NumberOfSurveyDays > 1){
+  OpeningBlurp = paste("We conducted a census of the Chisana Caribou herd in ",WRST," from ",StartDate," to ",EndDate," (",NumberOfSurveyDays," days).",sep="")
+}else{
+  OpeningBlurp = paste("We conducted a census of the Chisana Caribou herd in ",WRST," on ",EndDate,".",sep="")
+}
+
+# data_t = t(data)
+# colnames(data_t) = ''
+# kable(data_t)
 ```
+
+The National Park Service has monitored the population and composition of the Chisana caribou herd in `r WRST` since the 1980s. r OpeningBlurp` Our goal was to estimate herd size accounting for variability in sightability related to group size, using the standard methods described in Putera and Miller (2018).
 
 # Results
 
@@ -301,45 +317,19 @@ if (nrow(data) > 0){
 
 ```{r echo=FALSE}
 
-# Get the chisana population estimates from the reports to build a chart of population size over time
-Sql = paste("SELECT Year
-, SourceID
-, [Herd (report)]
-, FallSurveyDate
-, FallEstimatedBulls
-, FallPopulationEstimate
-, FallPopulationEstimateLower
-, FallPopulationEstimateUpper
-, FallPopulationEstimateMethod
-, FallCows, FallCalves
-, FallEstimatedCalves
-, FallBull
-, FallTotal
-, FallCalvesPer100Cows
-, FallBullsPer100Cows
-, FallPctCow
-, FallPctCalves
-, FallPctBulls
-, FallPctSmallBullsOfBulls
-, FallPctMediumBullsOfBulls
-, FallPctLargeBullsOfBulls
-, FallSampleSize
-, ReportYear
-, Herd
-, Agency
-, EarliestContentYear
-, LatestContentYear
-, Citation
-,ResultsValidatedDate
-FROM            Summary_ChisanaHistoricalSurveyResults
-ORDER BY Year, SourceID
-",sep="")
+# Get the chisana age and sex ratios from the reports to build a chart of population size over time
+Sql = paste("SELECT        Year, SourceID, [Herd (report)], FallSurveyDate, FallCalvesPer100Cows, FallBullsPer100Cows, FallPctCow, FallPctCalves, FallPctBulls, 
+                         FallPctSmallBullsOfBulls, FallPctMediumBullsOfBulls, FallPctLargeBullsOfBulls, FallSampleSize, FallEstimatedBulls, FallCows, FallCalves, FallEstimatedCalves, FallBull, FallTotal, ReportYear, Herd, Agency, EarliestContentYear, LatestContentYear, Citation, ResultsValidatedDate
+FROM            Summary_ChisanaAgeSexRatios
+ORDER BY Year, Citation",sep="")
 data = sqlQuery(Connection,Sql)
 
-```
+# Make a table of data sources used to generate the plot below so that attribution can be given
+sources = sqlQuery(Connection,'select distinct Citation as [Data source],SourceID from Summary_ChisanaAgeSexRatios order by citation')
+for(i in 1:nrow(sources)) {  
+  sources$ID[i] = i
+}
 
-
-```{r echo=FALSE}
 
 ggplot(
   data %>% filter(FallBullsPer100Cows > 0)
@@ -359,7 +349,8 @@ ggplot(
   scale_x_continuous(breaks = seq(1978, max(data$Year), by = 2)) + # Set the X axis scale
   
   # Manually adjust points 
-  scale_shape_discrete(name="Source", breaks=c("46", "47", "54","999"), labels=c("Cutting, 2023", "Hegel, et al., 2014", "Chisana Caribou Herd\n Working Group, 2012","WRST")) +
+  #scale_shape_discrete(name="Source", breaks=c("46", "47", "54","999"), labels=c("Cutting, 2023", "Hegel, et al., 2014", "Chisana Caribou Herd\n Working Group, 2012","WRST")) +
+  scale_shape_discrete(name = "Source", breaks = as.vector(sources$SourceID), labels = as.vector(sources$ID)) +
   
 # Manually adjust lines 
   scale_linetype_discrete(name="Ratio", breaks=c("solid","dashed"), labels=c("Bulls/100 cows","Calves/100 cows"))
@@ -368,12 +359,36 @@ ggplot(
 
 Figure X. Chisana sex and age ratios over time. Dotted horizontal lines show the management goals of 35 bulls/100 cows and 15 calves/100 cows.
 
+Key to data sources:  
+```{r echo=FALSE}
+kable(sources %>% select(ID,`Data source`) %>% arrange(ID))
+```
+
 ```{r echo=FALSE}
 
-ggplot(
-  data %>% filter(SourceID == 54 | SourceID == 46 | SourceID == 47) %>% # These are the good, valid reports
-  filter(!(SourceID == 54 & Year > 2002))  # Exclude CCH working group estimates after 2002, USGS estimates in Hegel duplicates these estimates and have error bars
-  ) +
+# Get the chisana population estimates from the reports to build a chart of population size over time
+Sql = "SELECT Year
+, SourceID
+, [Herd (report)]
+, FallSurveyDate
+, FallPopulationEstimate
+, FallPopulationEstimateLower
+, FallPopulationEstimateUpper
+, FallPopulationEstimateMethod
+, FallTotal
+, FallSampleSize
+, ReportYear
+, Herd
+, Agency
+, EarliestContentYear
+, LatestContentYear
+, Citation
+, ResultsValidatedDate
+FROM Summary_Chisana_PopulationSize
+ORDER BY Year"
+data = sqlQuery(Connection,Sql)
+
+ggplot(data ) +
   geom_point(aes(x=Year,y=FallPopulationEstimate,shape=factor(SourceID))) +
   geom_line(aes(x=Year,y=FallPopulationEstimate)) +
   geom_errorbar(aes(x=Year,ymin=FallPopulationEstimateLower,ymax=FallPopulationEstimateUpper)) +
@@ -391,9 +406,13 @@ ggplot(
   
 ```
 
-Figure X. Sex and age ratios over time. Captive rearing program was begun in 2003 (CCHWG, 2012).
+Figure X. Chisana herd estimated population over time. Captive rearing program was begun in 2003 (CCHWG, 2012).
 
 # References
+
+Adams LG and Roffler GH. 2007. Chisana Caribou Census: 13-14 October 2007. Unpublished Report. US Geological Survey, Anchorage, Alaska
+
+ADFG. 2015. Species Management Report, Alaska Department of Fish and Game, Chapter 7: Caribou Management Report. Unpublished Report. Alaska Department of Fish and Game, Division of Wildlife Conservation. Juneau, AK.
 
 Chisana Caribou Herd Working Group. 2012. Management plan for the Chisana caribou herd: 2010-2015. Government of Yukon Department of Environment Whitehorse, YT. 48pp.
 
@@ -403,4 +422,3 @@ Fieberg, J. Estimating Population Abundance Using Sightability Models: R Sightab
 
 HEGEL, T., T. BENTZEN, R. DRUMMOND, J. PUTERA, S. TAYLOR, AND J. WELLS. 2014. Chisana caribou herd population estimate, 2013. Yukon Fish and Wildlife Branch Report TR-14-XX. Whitehorse, Yukon, Canada.
 
-R sightability package
