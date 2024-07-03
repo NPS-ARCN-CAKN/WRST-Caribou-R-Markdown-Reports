@@ -14,8 +14,9 @@ title: "Results from the `r Year` Composition Count Survey of the Chisana Caribo
 author: ""
 date: ""
 output:
-  html_document:
-  toc: yes
+html_document:
+  toc: true
+  theme: united
 ---
 
 ```{r setup, include=FALSE}
@@ -64,21 +65,18 @@ Anchorage, AK 99501
 
 # Introduction
 
-[To be written]
+The National Park Service has monitored the population and composition of the Chisana caribou herd in `r WRST` since the 1980s. r OpeningBlurp` Our goal was to estimate herd size accounting for variability in sightability related to group size, using the standard methods described in Putera and Miller (2018).
 
 # Methods
 
 [To be written]
 
-R sightability package
-
 Table X. Survey dates
 ```{r echo=FALSE}
 
-# Dates
-Sql = paste("-- background
-SELECT        [Start date], [End date], [Survey days], [Search areas]
-FROM            Summary_Census
+# Get the survey dates
+Sql = paste("SELECT [Start date], [End date], [Survey days], [Search areas]
+FROM Summary_Census
 WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
 
 # Get a data frame 
@@ -96,14 +94,11 @@ if (NumberOfSurveyDays > 1){
   OpeningBlurp = paste("We conducted a census of the Chisana Caribou herd in ",WRST," on ",EndDate,".",sep="")
 }
 
-# data_t = t(data)
-# colnames(data_t) = ''
-# kable(data_t)
 ```
 
-The National Park Service has monitored the population and composition of the Chisana caribou herd in `r WRST` since the 1980s. r OpeningBlurp` Our goal was to estimate herd size accounting for variability in sightability related to group size, using the standard methods described in Putera and Miller (2018).
-
 # Results
+
+[To be written]
 
 ## Herd Distribution
 
@@ -111,12 +106,12 @@ Figure `r FigureCounter` shows the distribution of animals observed during the `
 
 ```{r echo=FALSE}
 
-# Get the spatial data for comp and population surveys
+# Get the spatial data for caribou observations
 Sql = paste("SELECT        SurveyName, Year, Herd, SurveyType, SearchArea, GroupNumber, SightingDate, Lat, Lon
 , IsNull([In],0) as [In]
 , IsNull(Seen,0) as Seen
 , IsNull(Marked,0) as Marked
-FROM            CaribouGroups
+FROM CaribouGroups
 WHERE (Year = ",Year,") And Herd='Chisana' And Lat > 0",sep="")
 data = sqlQuery(Connection,Sql)
 
@@ -169,10 +164,10 @@ ggplot() +
   theme_classic()
 
 ```
+
 Figure `r FigureCounter`. Distribution of animals observed in `r WRST` during the `r Year` Chisana caribou survey. Marked caribou (GPS collared animal) are shown with black dots, unmarked animals with gray dots. Kernel density contours are shown in red to give an idea of the range of caribou on the day of the survey.
 
 Table `r TableCounter` summarizes the results of the `r Year` Chisana caribou survey in `r WRST` by age and sex classes, and summarizes mark/recapture results.
-
 
 Table `r TableCounter`. Number of animals inventoried during the `r Year` Chisana caribou survey in `r WRST` by age and sex classes and mark/recapture results.
 
@@ -187,10 +182,10 @@ Sql = paste("SELECT Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, 
 FROM Summary_Census
 WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
 
-data = sqlQuery(Connection,Sql)
-data_t = t(data)
-colnames(data_t) = 'Counts'
-kable(data_t)
+data = sqlQuery(Connection,Sql) # Get the counts data
+data_t = t(data) # Transpose the data so it looks better in the report
+colnames(data_t) = 'Counts' # Change the header
+kable(data_t) # Show it
 ```
 
 ## Herd Composition
@@ -200,16 +195,16 @@ Table `r TableCounter` provides a summary of the composition of the Chisana cari
 Table `r TableCounter`. Chisana herd composition summary.
 ```{r echo=FALSE}
 
-# Raw counts
+# Herd composition query
 Sql = paste("SELECT        [Calves/100 cows], [Bulls/100 cows], [Pct. calf], [Pct. cow], [Pct. small bull], [Pct. medium bull], [Pct. large bull], [Pct. small bull (of total bulls)], [Pct. medium bull (of total bulls)], [Pct. large bull (of total bulls)], 
                          [Pct. bull (composition survey)], [Total groups observed], GroupSize_Mean, [Minimum group size], [Maximum group size]
 FROM            Summary_Census
 WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
 
-data = sqlQuery(Connection,Sql)
-data_t = t(data)
-colnames(data_t) = 'Composition'
-kable(data_t)
+data = sqlQuery(Connection,Sql) # Get the data
+data_t = t(data) # Transpose the data frame
+colnames(data_t) = 'Composition' # Change the header
+kable(data_t) # Show it
 ```
 
 ## Population Estimate
@@ -217,12 +212,13 @@ kable(data_t)
 Note: 2024-06-27 SDMiller: I'm still working out how to run this analysis by trying to reproduce the 2010 Chisana Report put out by Yukon (https://irma.nps.gov/DataStore/DownloadFile/566074)[https://irma.nps.gov/DataStore/DownloadFile/566074]
 Example code at J:\Monitoring\Caribou\WRST\Historical Files from Copper Center\Electronic\Chisana\SightabilityModel
 
-Note: Population estimates can only be calculated if sightability information is collected. The next R chunk executes the QC_CaribouGroups_SurveysWithNoSightabilityInformation query to determine if sightability information exists. If sightability information exists you will get a corrected population estimate, otherwise a minimum count.
+
 
 ```{r echo=FALSE}
-# We cannot calculate a population estimate based on sightability if no sightability information was collected.
-# The two required columns are Marked (whether GPS collared animal(s) were in the group), and Seen, whether the caribou group was observed, or missed.
-# If the survey in question shows up in the query then a sightability corrected estimate is not possible
+
+#Note: Population estimates can only be calculated if sightability information is collected. The next R chunk executes the QC_CaribouGroups_SurveysWithNoSightabilityInformation query to determine if sightability information exists. If sightability information exists you will get a corrected population estimate, otherwise a minimum count.
+
+# Query to see if sightability info exists
 Sql = paste("SELECT  [Herd]
       ,[Year]
       ,[Marked]
@@ -230,15 +226,9 @@ Sql = paste("SELECT  [Herd]
       ,[SurveyName]
   FROM [QC_CaribouGroups_SurveysWithNoSightabilityInformation]
 WHERE Herd='Chisana' and Year = ",Year,sep="")
-data = sqlQuery(Connection,Sql)
+data = sqlQuery(Connection,Sql) # Data frame 
 
-```
-
-
-```{r echo = FALSE}
-
-# If the survey shows up in the list of surveys with no sightability data (above) then we can't calculate a corrected population estimate.
-# Show a minimum count
+# If the survey shows up in the query of surveys with no sightability data (above) then we can't calculate a corrected population estimate, show a minimum count
 if (nrow(data) > 0){
 
   # No sightability info was collected for this survey
@@ -250,12 +240,14 @@ if (nrow(data) > 0){
   Sql = paste("SELECT Caribou as [Minimum count total] FROM Summary_Census WHERE Herd='Chisana' and Year = ",Year,"",sep="")
   kable(sqlQuery(Connection,Sql))
 
-}else{
+} else {
   
-  # Calculate a sightability corrected population estimate
+  # Sightability info exists, calculate a sightability corrected population estimate
   print('Sightability information exists for this survey')
   
-  # Observational dataset
+  # The code below uses Fieberg's Sightability Package
+  
+  # Get the Observational dataset
   # Note: For some reason Total and Grp_Size are both needed by SightabilityModel R package, even though they are duplicative
   Sql = paste("SELECT  1 as stratum,[Total] as total, 1 as subunit,[Grp_Size] FROM [WRST_Caribou].[dbo].[Sightability_odat] 
   WHERE Herd='Chisana' 
@@ -268,7 +260,7 @@ if (nrow(data) > 0){
   Sql = paste("SELECT   ID, Observed, Grp_Size FROM  Sightability_sdat WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
   sdat = sqlQuery(Connection,Sql)
   
-  # Sampling info dataset (essentially all 1s, generate on the fly)
+  # Sampling info dataset (no strat, so essentially all 1s, no need to query, generate on the fly)
   stratum <- 1
   Nh = 1
   nh = 1
@@ -276,6 +268,7 @@ if (nrow(data) > 0){
   
   #Code to fit a sightability model using group size as a covariate
   # Choose the model with the smallest AIC
+  # Start by fitting a model including group size as a covariate
   fit.group.size <- Sight.Est(form=Observed ~ Grp_Size,sdat=sdat,odat=odat,sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
   fit.group.size #Provides the results from the model fitting
   print(fit.group.size)
@@ -283,10 +276,11 @@ if (nrow(data) > 0){
   Estimate = Summary$tau.hat
   UpperEstimate = Summary$ucl
   LowerEstimate = Summary$lcl
+  AIC.group = fit.group.size$sight.model['aic']
   print(paste("Estimate (group size): ",Estimate," (",LowerEstimate," - ",UpperEstimate,")"))
   
-  #Code to fit a sightability model having a constant sightability (assumes 100% sightability?)
-   # Choose the model with the smallest AIC
+  # Next calculate a sightability model having a constant sightability (assumes 100% sightability)
+  # Choose the model with the smallest AIC
   fit.constant<-Sight.Est(form=Observed ~ 1, sdat=sdat, odat=odat, sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
   fit.constant  #Provides the results
   print(fit.constant)
@@ -294,8 +288,10 @@ if (nrow(data) > 0){
   Estimate = Summary$tau.hat
   UpperEstimate = Summary$ucl
   LowerEstimate = Summary$lcl
+  AIC.constant = fit.constant$sight.model['aic']
   print(paste("Estimate (assumes 100% sightability): ",Estimate," (",LowerEstimate," - ",UpperEstimate,")"))
   
+  # A note on AIC (Akaike's ‘An Information Criterion’): When comparing models fitted by maximum likelihood to the same data, the smaller the AIC or BIC, the better the fit.The theory of AIC requires that the log-likelihood has been maximized: whereas AIC can be computed for models not fitted by maximum likelihood, their AIC values should not be compared.
   
   #The AICc for the constant model is lower than for the Group Size model so I chose the contant model as most supported.
   # Sight.Est doesn't calculate AICc (the small sample correction for AIC), I did that myself.
