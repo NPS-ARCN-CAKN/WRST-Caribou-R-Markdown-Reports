@@ -67,6 +67,15 @@ Anchorage, AK 99501
 
 The National Park Service has monitored the population and composition of the Chisana caribou herd in `r WRST` since the 1980s. r OpeningBlurp` Our goal was to estimate herd size accounting for variability in sightability related to group size, using the standard methods described in Putera and Miller (2018).
 
+Little monitoring effort was expended on the Chisana Caribou Herd before the mid-1980s. During
+1987-2003, herd monitoring was conducted collaboratively with ADF&G and the Yukon Department
+of Environment (YDE) sharing lead responsibilities (Farnell and Gardner 2002) and NPS
+contributing money and personnel to the effort. From October 2003 – May 2008, NPS supported a
+major research effort led by USGS to assess the herd’s population dynamics, in association with a
+captive-rearing effort organized by YDE. Since 2008, monitoring of the Chisana Herd has again
+been conducted primarily by ADF&G and YDE with assistance by WRST staff.
+
+
 # Methods
 
 [To be written]
@@ -404,6 +413,10 @@ Key to data sources:
 ```{r echo=FALSE}
 kable(sources %>% select(ID,`Data source`) %>% arrange(ID))
 ```
+
+# Discussion
+
+
 
 # References
 
