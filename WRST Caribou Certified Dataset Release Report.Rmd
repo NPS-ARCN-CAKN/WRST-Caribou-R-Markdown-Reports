@@ -6,7 +6,7 @@ output:
     toc_float: true
 ---
 
-```{r setup, include=FALSE}
+```{r setup,echo=FALSE, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 # Setup
 options(knitr.kable.NA = '')
@@ -158,33 +158,51 @@ Figure `r FigureCounter`. Caribou surveys history by herd and year. Composition 
 
 # Radiotracking Surveys History
 
-Radiotracking surveys history
+## GPS Collar Deployment History
 
 ```{r, echo=FALSE}
-Sql = "SELECT TOP (1000) [Herd]
-      ,[SightingDate]
-      ,[n]
-      ,[Live]
-      ,[Dead]
-      ,[StatusUnknown]
-      ,[PctMort]
-  FROM [WRST_Caribou].[dbo].[Summary_Radiotracking_HistoricalPctMortality]"
+
+Sql = "SELECT   Herd, Year, [Collars deployed], Mortalities, Retrieved, Disposed
+FROM            Summary_CollarsDeployedByYear
+ORDER BY ProjectID, Year"
 DF = GetDataFrame(Sql)
 
+```
+
+```{r, echo=FALSE}
+# Deployments history by herd
 ggplot(DF) +
-  geom_point(aes(x=SightingDate,y=PctMort)) +
+  geom_col(aes(x=Year,y=`Collars deployed`,na.rm=TRUE)) +
   theme_minimal() + 
   facet_grid(rows=vars(Herd))
+  theme_minimal()  +
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) 
 
 
-  # geom_col(data=DF,mapping=aes(x=Year,y=n,fill=SurveyType))  +
-  # scale_fill_manual(values = c(Composition="black", Population = "grey55"))  +
-  #  +
-  # theme_minimal()  + 
-  # scale_x_continuous(breaks = seq(min(DF$Year), max(DF$Year), by = 2)) +
-  # theme(axis.text.x=element_text(angle=45,hjust=1,vjust=0.5)) +
-  # ylab("Number of surveys") +
-  # guides(fill=guide_legend(title="Survey Type"))
+# Increment the counter
+FigureCounter = FigureCounter + 1
+```
+
+## Radiotracking surveys history
+
+```{r, echo=FALSE, warning=FALSE,fig.cap=paste("Figure ",sep="")}
+Sql = "SELECT        Herd, Year, COUNT(DISTINCT SightingDate) AS [Survey days]
+FROM            Dataset_Radiotracking
+GROUP BY Herd, Year
+ORDER BY Herd, Year"
+DF = GetDataFrame(Sql)
+#head(DF)
+
+ggplot(DF,na.rm=TRUE) +
+  geom_col(aes(x=Year,y=`Survey days`),na.rm=TRUE) +
+  geom_text(aes(x=Year,y=`Survey days` + 5,label=`Survey days`)) +
+  theme_minimal() + 
+  facet_grid(rows=vars(Herd)) +
+  scale_x_continuous(breaks = seq(min(DF$Year), max(DF$Year), by = 1)) +
+  theme_minimal()  +
+  ggtitle("Radiotracking survey days")
+  theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) 
+
 
 FigureCounter = FigureCounter + 1
 ```
