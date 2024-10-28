@@ -1,25 +1,25 @@
-
 ```{r echo=FALSE}
-
 # Set report parameters
-Year = 2023 # Year 
+Year = 2024 # Year 
 Park = 'WRST'
 ```
 
 ---
-title: "Annual Report: Monitoring the Abundance and Composition of the Chisana and Mentasta Caribou Herds in Wrangell - St. Elias National Park and Preserve, Alaska"
-author: "Scott D. Miller"
-date: "`r Sys.Date()`"
+title: "`r Year ` Annual Report: Monitoring the Abundance and Composition of the Chisana and Mentasta Caribou Herds in Wrangell - St. Elias National Park and Preserve, Alaska"
+author: ""
+date: ""
 output:
   html_document:
-  toc: yes
+    toc: true
+    toc_depth: 4
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
 
 # Setup
 options(knitr.kable.NA = '')
-knitr::opts_chunk$set(echo = TRUE)
+knitr::opts_chunk$set(echo = FALSE)
 library(knitr)
 library(RODBC)
 library(sf)
@@ -143,7 +143,7 @@ ggplot() +
 
 ### Results
 
-Table X. Caribou observations summary.
+Table X. Chisana caribou survey observations summary.
 
 ```{r echo=FALSE}
 
@@ -167,9 +167,17 @@ Cow
 FROM            Summary_Census
 WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
 data = sqlQuery(Connection,Sql)
-data_t = t(data)
-colnames(data_t) = "Result"
-kable(data_t)
+
+# Transpose and display the records
+if (nrow(data) > 0){
+  # If we got rows show them
+  colnames(data_t) = "Result"
+  kable(t(data))
+}else{
+  # Otherwise indicate no rows returned
+  kable("No records")
+}
+
 
 ```
 
@@ -194,10 +202,17 @@ Sql = paste("SELECT
 --, [Type of survey], Timing,[Survey name]
 FROM            Summary_Census
 WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
-data = sqlQuery(Connection,Sql)
-data_t = t(data)
-colnames(data_t) = "Result"
-kable(data_t)
+
+# Transpose and display the records
+if (nrow(data) > 0){
+  # If we got rows show them
+  colnames(data_t) = "Result"
+  kable(t(data))
+}else{
+  # Otherwise indicate no rows returned
+  kable("No records")
+}
+
 
 ```
 
@@ -222,24 +237,32 @@ Nh = 1
 nh = 1
 sampinfo <- data.frame(stratum,Nh,nh)
 
-#Code to fit a sightability model using group size as a covariate
-fit.group.size <- Sight.Est(form=Observed ~ Grp_Size,sdat=sdat,odat=odat,sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
-fit.group.size #Provides the results from the model fitting
+# If there are observation data records then fit a sightability model
+# Transpose and display the records
+if (nrow(odat) > 0){
+  #Code to fit a sightability model using group size as a covariate
+  fit.group.size <- Sight.Est(form=Observed ~ Grp_Size,sdat=sdat,odat=odat,sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+  fit.group.size #Provides the results from the model fitting
+  
+  #Code to fit a sightability model having a constant sightability (assumes 100% sightability?)
+  fit.constant<-Sight.Est(form=Observed ~ 1, sdat=sdat, odat=odat, sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
+  fit.constant  #Provides the results
+  
+  #The AICc for the constant model is lower than for the Group Size model so I chose the contant model as most supported.
+  # Sight.Est doesn't calculate AICc (the small sample correction for AIC), I did that myself.
+  
+  #To get the actual sightability correction factor use the following codes
+  #This fits the sightability model
+  fit.glm <- glm(Observed~1, data=sdat, family=binomial()) 
+  
+  #This gives you the sightability correction factor (theta)
+  theta.SS <- 1+exp(-coef(fit.glm)-summary(fit.glm)$cov.unscaled/2) 
+  theta.SS # Provides the actual number
 
-#Code to fit a sightability model having a constant sightability (assumes 100% sightability?)
-fit.constant<-Sight.Est(form=Observed ~ 1, sdat=sdat, odat=odat, sampinfo=sampinfo, method="Wong", logCI=T, alpha=0.1, Vm.boot=T, nboot=1000)
-fit.constant  #Provides the results
-
-#The AICc for the constant model is lower than for the Group Size model so I chose the contant model as most supported.
-# Sight.Est doesn't calculate AICc (the small sample correction for AIC), I did that myself.
-
-#To get the actual sightability correction factor use the following codes
-#This fits the sightability model
-fit.glm <- glm(Observed~1, data=sdat, family=binomial()) 
-
-#This gives you the sightability correction factor (theta)
-theta.SS <- 1+exp(-coef(fit.glm)-summary(fit.glm)$cov.unscaled/2) 
-theta.SS # Provides the actual number
+}else{
+  # Otherwise indicate no rows returned
+  kable("Observation dataset is empty")
+}
 
 ```
 
@@ -290,11 +313,6 @@ SurveysDoneDF = sqlQuery(Connection,Sql)
 
 kable(SurveysDoneDF[,c("Start date","End date","Herd","Type of survey","Total groups observed","Survey days","Search areas")])
 TableCount = TableCount + 1
-
-
-
-
-
 
 ```
 
