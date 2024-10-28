@@ -51,6 +51,7 @@ National Park Service, Arctic Inventory and Monitoring Network\
 240 W. 5th Ave.\
 Anchorage, AK 99501
 
+
 # Abstract
 
 # Introduction
