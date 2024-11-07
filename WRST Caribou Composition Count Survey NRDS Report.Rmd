@@ -16,7 +16,9 @@ author: ""
 date: ""
 output:
   html_document:
-  toc: yes
+    toc: true
+    toc_depth: 4
+    toc_float: true
 ---
 
 ```{r setup, include=FALSE}
