@@ -169,12 +169,12 @@ DF = GetDataFrame(Sql)
 
 ```
 
-```{r, echo=FALSE}
+```{r, echo=FALSE,warning=FALSE,error=FALSE,message=FALSE}
 # Deployments history by herd
 ggplot(DF) +
-  geom_col(aes(x=Year,y=`Collars deployed`,na.rm=TRUE)) +
+  geom_col(aes(x=Year,y=`Collars deployed`)) +
   theme_minimal() + 
-  facet_grid(rows=vars(Herd))
+  facet_grid(rows=vars(Herd)) +
   theme_minimal()  +
   theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) 
 
@@ -200,9 +200,8 @@ ggplot(DF,na.rm=TRUE) +
   facet_grid(rows=vars(Herd)) +
   scale_x_continuous(breaks = seq(min(DF$Year), max(DF$Year), by = 1)) +
   theme_minimal()  +
-  ggtitle("Radiotracking survey days")
+  ggtitle("Radiotracking survey days") +
   theme(axis.text.x=element_text(angle=90,hjust=1,vjust=0.5)) 
-
 
 FigureCounter = FigureCounter + 1
 ```
