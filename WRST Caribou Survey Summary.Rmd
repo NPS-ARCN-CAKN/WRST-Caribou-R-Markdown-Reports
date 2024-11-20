@@ -1,0 +1,146 @@
+```{r echo=FALSE}
+# Set report parameters
+SurveyName = '2022 DENA Caribou Composition Survey'
+SqlServer = 'inpyugamsvm01\\nuna'
+Database = 'WRST_Caribou'
+```
+
+---
+title: "Preliminary Results: `r SurveyName`"
+author: ""
+date: ""
+output:
+  html_document:
+    toc: true
+    toc_depth: 4
+    toc_float: true
+---
+
+```{r setup, include=FALSE}
+
+# Setup
+options(knitr.kable.NA = '')
+knitr::opts_chunk$set(echo = FALSE)
+options(download.file.method = "wininet")
+
+# Libraries
+library(knitr)
+
+library(sf)
+library(tidyverse)
+library(sqldf)
+library(odbc)
+library(DBI)
+
+# Counters to increment the table and figure numbers as the report progresses.
+TableCounter = 1
+FigureCounter = 1
+
+```
+
+```{r,label="Functions",echo=FALSE,include=FALSE}
+  # Load the ODBC library
+  library(odbc)
+  library(DBI)
+
+# Get a database connection
+GetDatabaseConnection <- function(SqlServer,Database) {
+
+  # Try to open a database connection
+  Connection <- tryCatch({
+
+    # Define the connection string
+    ConnectionString = paste("Driver={SQL Server};Server=",SqlServer,";Database=",Database,";Trusted_Connection=Yes;",sep="")
+    Connection = dbConnect(odbc::odbc(), .connection_string = ConnectionString)
+    return(Connection)
+
+  }, warning = function(w) {
+
+    # Warning
+    message("Warning: ", conditionMessage(w))
+    return(NA)
+
+  }, error = function(e) {
+
+    # Error
+    message("Error: ", conditionMessage(e))
+    return(NA)
+
+  }, finally = {
+
+    # Finally
+    # message("Cleanup, if needed")
+
+  })
+
+  return(Connection)
+}
+
+# Function to encase a string with backticks if needed
+# BackTickEncaseIfNeeded('test')
+# BackTickEncaseIfNeeded('test 2')
+BackTickEncaseIfNeeded <- function(StringToEncase) {
+  if (grepl("[^a-zA-Z0-9_]", StringToEncase) || StringToEncase %in% c("", "TRUE", "FALSE", "NULL", "NA")) {
+    return(paste0("`", StringToEncase, "`"))
+  } else {
+    return(StringToEncase)
+  }
+}
+
+# Function to encase data frame column names with backticks if needed
+# Example:
+# Print out a list of column names, backticked if necessary
+# for (Column in BackTickEncaseColumnNames(SurveySummary)){
+#   cat(Column,",\n")
+# }
+BackTickEncaseColumnNames <- function(DataFrame) {
+  colnames(DataFrame) <- sapply(colnames(DataFrame), BackTickEncaseIfNeeded)
+  return(colnames(DataFrame))
+}
+
+
+
+```
+
+
+
+```{r}
+
+# Database connection strings
+Connection = GetDatabaseConnection(SqlServer,Database) 
+AM_Connection = GetDatabaseConnection('inpakrovmais','Animal_Movement') 
+
+```
+
+
+# Results
+
+```{r}
+#SQL
+Sql = paste("SELECT [Survey name], Herd, [Survey type], [Type of survey], Timing, Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, BullsWereCategorized, Adult, Caribou, Unknown, [Calf, male], [Calf, female], [Calf, unclassified], Yearling,
+GroupSize_Mean, [Minimum group size], [Maximum group size], [Pct. calf], [Pct. cow], [Pct. small bull], [Pct. medium bull], [Pct. large bull], [Pct. small bull (of total bulls)], [Pct. medium bull (of total bulls)],
+[Pct. large bull (of total bulls)], [Pct. bull (composition survey)], [Pct. bull (population survey)], [Calves/100 cows], [Bulls/100 cows], [Total groups observed], Marked, Seen, [Marked and Seen], [Marked and Not Seen],
+[Pct. marked groups observed], [Groups in the survey area], [Groups out of the survey area], [Marked groups in survey area], [Marked groups observed in survey area], [Observed groups in survey area],
+[Pct. marked groups observed in survey area], [Total collared animals observed], [Number of frequencies that were available on survey date (Animal_Movement)], [Collars not heard or not searched], [Start date], [End date],
+[Survey days], [Search areas], Park, Year, CertificationLevel, DateValidated, ValidatedBy
+FROM  Summary_Census
+WHERE [Survey name] = '",SurveyName,"'",sep="")
+SurveySummary = dbGetQuery(Connection,Sql)
+
+# Print out a list of column names, backticked if necessary
+for (Column in BackTickEncaseColumnNames(SurveySummary)){
+  cat(Column,",\n")
+}
+
+```
+
+
+
+Scott D. Miller\
+Information Technology Specialist/Data Manager\
+National Park Service, Arctic Inventory and Monitoring Network\
+240 W. 5th Ave.\
+Anchorage, AK 99501
+
+
+

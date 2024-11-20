@@ -1,11 +1,28 @@
 ```{r echo=FALSE}
-# Set report parameters
+# SET USER DEFINED PARAMETERS HERE
 Year = 2024 # Year 
-Park = 'WRST'
+Herd = 'Mentasta'
+SurveyType = 'PE'
+
+```
+
+```{r echo=FALSE}
+# Park shortcuts
+Park='WRST'
+WRST = "Wrangell - St. Elias National Park and Preserve"
+
+# Convert the survey type acronym into a longer form for use in the text
+SurveyTypeLong=""
+if(SurveyType=='PE'){
+  SurveyTypeLong='Population Estimate'
+} else if(SurveyType=='CC'){
+    SurveyTypeLong='Population Estimate'
+}
+Title = paste("Survey Summary: ",Year," ",SurveyTypeLong," of the ",Herd," Caribou Herd in ",WRST,", Alaska",sep="")
 ```
 
 ---
-title: "`r Year ` Annual Report: Monitoring the Abundance and Composition of the Chisana and Mentasta Caribou Herds in Wrangell - St. Elias National Park and Preserve, Alaska"
+title: "`r Title`" 
 author: ""
 date: ""
 output:
@@ -15,7 +32,7 @@ output:
     toc_float: true
 ---
 
-```{r setup, include=FALSE}
+```{r setup, echo=FALSE, include=FALSE}
 
 # Setup
 options(knitr.kable.NA = '')
@@ -27,11 +44,11 @@ library(ggplot2)
 library(SightabilityModel)
 library(tidyverse)
 
-# WRST Shortcut
-WRST = "Wrangell - St. Elias National Park and Preserve"
 
-# Database connection string
+
+# Database connection strings
 Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpyugamsvm01\\nuna;Database=WRST_Caribou;Trusted_connection=yes')
+AM_Connection =  odbcDriverConnect('Driver={SQL Server};Server=inpakrovmais;Database=Animal_Movement;Trusted_connection=yes')
 
 # Counters to increment the table and figure numbers as the report progresses.
 TableCount = 1
@@ -39,11 +56,6 @@ FigureCount = 1
 
 ```
 
-Kyle Cutting\
-Wildlife Biologist\
-National Park Service, `r WRST`\
-8 Richardson Hwy Mile 106\
-Copper Center, AK 99573
 
 Scott D. Miller\
 Information Technology Specialist/Data Manager\
@@ -51,42 +63,20 @@ National Park Service, Arctic Inventory and Monitoring Network\
 240 W. 5th Ave.\
 Anchorage, AK 99501
 
-
-
-# Introduction
-
- 1987-2002  
-Chisana 87-2002 pop est used late june minimum counts, and fall sex and age composition, recruitment and mortality data using adfg model
-
- 2003-2006  
-Captive rearing 2003-6. All animals collared and released. (208 animals). USGS implemented fall censos technique correcting for undetected caribou using radiocollared animals.
-
-# Objectives
-
-For each herd monitor
--   Sex ratios  
--   Calf recruitment  
--   Population size  
-
-Mentasta Surveys History
-
-
-# Methods
-
 # Results
 
-## Chisana
-
-### Herd Distribution Map
+## Herd Distribution
 
 Caribou were distributed as shown in Figure `r FigureCount`.
 
-```{r echo=FALSE}
+```{r echo=FALSE,warning=FALSE}
 
 # Get the spatial data for comp and population surveys
-Sql = paste("SELECT        SurveyName, Year, Herd, SurveyType, SearchArea, GroupNumber, SightingDate, Lat, Lon, [In], Seen, Marked
-FROM            CaribouGroups
-WHERE (Year = ",Year,") And Herd='Chisana' And Lat > 0",sep="")
+Sql = paste("SELECT SurveyName, Year, Herd, SurveyType, SearchArea, GroupNumber, SightingDate, Lat, Lon, [In], Seen
+,CASE When Marked = 1 Then 'True' WHEN Marked = 0 Then 'False' END as Marked
+--, Marked
+FROM Dataset_Census
+WHERE Year = ",Year," And Herd='",Herd,"' And Lat > 0",sep="")
 data = sqlQuery(Connection,Sql)
 
 # Convert the data into a spatial data frame
@@ -117,8 +107,8 @@ ggplot() +
   
   # Caribou observations
   geom_sf(data = spdata, aes(color=factor(Marked)), size= 1, show.legend = T) +
-  scale_color_manual(values = c("black","darkgray"))  +
-  guides(color=guide_legend(title="Marked (1=True,0=False)")) +
+  scale_color_manual(values = c("darkgray","black"))  +
+  guides(color=guide_legend(title="Marked")) +
   
   # Adjust colors
   scale_fill_brewer() + # This seems to make the colors less wacky, not sure why
@@ -132,45 +122,113 @@ ggplot() +
   # Label axes
   xlab('Longitude') + ylab('Latitude') +
   
-  ggtitle('Distribution of Chisana herd during survey') +
+  ggtitle(paste("Distribution of ",Herd," herd during survey",sep="")) +
   
   # Clean look
   theme_classic()
 
 ```
 
+```{r echo=FALSE,warning=FALSE}
+# Survey summary
+Sql = paste("SELECT 
+[Cow]
+,[Calf]
+,[Small bull]
+,[Medium bull]
+,[Large bull]
+,[Bull]
+,[Adult]
+,[Caribou]
+,[Unknown]
+,[Calf, male]
+,[Calf, female]
+,[Calf, unclassified]
+,[Yearling]
+,[GroupSize_Mean]
+,[Minimum group size]
+,[Maximum group size]
+,[Pct. calf]
+,[Pct. cow]
+,[Pct. small bull]
+,[Pct. medium bull]
+,[Pct. large bull]
+,[Pct. small bull (of total bulls)]
+,[Pct. medium bull (of total bulls)]
+,[Pct. large bull (of total bulls)]
+,[Pct. bull (composition survey)]
+,[Pct. bull (population survey)]
+,[Calves/100 cows]
+,[Bulls/100 cows]
+,[Total groups observed]
+,[Marked]
+,[Seen]
+,[Marked and Seen]
+,[Marked and Not Seen]
+,[Pct. marked groups observed]
+,[Groups in the survey area]
+,[Groups out of the survey area]
+,[Marked groups in survey area]
+,[Marked groups observed in survey area]
+,[Observed groups in survey area]
+,[Pct. marked groups observed in survey area]
+,[Total collared animals observed]
+,[Number of frequencies that were available on survey date (Animal_Movement)]
+,[Collars not heard or not searched]
+,[Start date]
+,[End date]
+,[Survey days]
+,[Search areas]
+,[Park]
+,[Year]
+--,[Survey name]
+--,[Herd]
+--,[Survey type]
+--,[Type of survey]
+--,Timing
+--,[BullsWereCategorized]
+FROM [WRST_Caribou].[dbo].[Summary_Census]
+WHERE        (Herd = '",Herd,"') AND (Year = ",Year,") And [Survey type]='",SurveyType,"'",sep="")
+Summary = sqlQuery(Connection,Sql)
+
+```
+
+## Counts
+
+```{r echo=FALSE,warning=FALSE}
+
+# Select out the counts only
+Counts = Summary %>% select(Cow
+,`Calf`
+,`Small bull`
+,`Medium bull`
+,`Large bull`
+,`Bull`
+,`Adult`
+,`Caribou`
+,`Unknown`
+,`Yearling`
+,`Minimum group size`
+,`Maximum group size`)
+CountsDF = as.data.frame(Counts)
+rownames(CountsDF) = NULL
+knitr::kable(t(CountsDF))
+```
+
+
+
+
 ### Results
 
-Table X. Chisana caribou survey observations summary.
 
 ```{r echo=FALSE}
 
-# Results of the Chisana Comp. Survey - Raw counts
-Sql = paste("SELECT 
-Cow
-, Calf
-, [Small bull]
-, [Medium bull]
-, [Large bull]
-, Bull, Adult
-, Caribou
-, IsNull(Unknown,0) as Unknown
-, [Minimum group size]
-, [Maximum group size]
-, [Total groups observed]
-, Marked
-, Seen
-, [Total collared animals observed]
-, [Number of frequencies that were available on survey date (Animal_Movement)]
-FROM            Summary_Census
-WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
-data = sqlQuery(Connection,Sql)
-
-# Transpose and display the records
-if (nrow(data) > 0){
+# Summary of the survey
+if (nrow(Summary) > 0){
   # If we got rows show them
-  colnames(data_t) = "Result"
-  kable(t(data))
+  Summary_t = t(Summary)
+  colnames(Summary_t) = "Result"
+  kable(Summary_t)
 }else{
   # Otherwise indicate no rows returned
   kable("No records")
@@ -182,7 +240,7 @@ if (nrow(data) > 0){
 Table X. Summary statistics
 
 ```{r echo=FALSE}
-# Results of the Chisana Comp. Survey - Stats
+# Results of the  Comp. Survey - Stats
 Sql = paste("SELECT 
 [Calves/100 cows]
 , [Bulls/100 cows]
@@ -199,7 +257,7 @@ Sql = paste("SELECT
 
 --, [Type of survey], Timing,[Survey name]
 FROM            Summary_Census
-WHERE        (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+WHERE        (Herd = '",Herd,"') AND (Year = ",Year,")",sep="")
 
 # Transpose and display the records
 if (nrow(data) > 0){
@@ -222,11 +280,11 @@ Example code at J:\Monitoring\Caribou\WRST\Historical Files from Copper Center\E
 ```{r echo=FALSE}
 # Observational dataset
 # Note: For some reason Total and Grp_Size are both needed by SightabilityModel R package, even though they are duplicative
-Sql = paste("SELECT  1 as stratum,[Total] as total, 1 as subunit,[Grp_Size] FROM [WRST_Caribou].[dbo].[Sightability_odat] WHERE Herd='Chisana' and Year = ",Year," And [In] = 1",sep="")
+Sql = paste("SELECT  1 as stratum,[Total] as total, 1 as subunit,[Grp_Size] FROM [WRST_Caribou].[dbo].[Sightability_odat] WHERE Herd='",Herd,"' and Year = ",Year," And [In] = 1",sep="")
 odat = sqlQuery(Connection,Sql)
 
 # Sightability dataset
-Sql = paste("SELECT   ID, Observed, Grp_Size FROM  Sightability_sdat WHERE (Herd = 'Chisana') AND (Year = ",Year,")",sep="")
+Sql = paste("SELECT   ID, Observed, Grp_Size FROM  Sightability_sdat WHERE (Herd = '",Herd,"') AND (Year = ",Year,")",sep="")
 sdat = sqlQuery(Connection,Sql)
 
 # Sampling info dataset (essentially all 1s, generate on the fly)
@@ -272,7 +330,7 @@ One of the purposes of the management plan is to allow a small harvest provided 
 ```{r echo=FALSE}
 Sql = "SELECT        Herd,Year, [Survey name], [Survey type], [Type of survey], Timing, Cow, Calf, [Small bull], [Medium bull], [Large bull], Bull, BullsWereCategorized, Adult, Caribou, Unknown, [Calves/100 cows], [Bulls/100 cows]
 FROM            Summary_Census
-WHERE Herd='Chisana' And [Survey type]='CC'
+WHERE Herd='",Herd,"' And [Survey type]='CC'
 ORDER BY Herd,Year, [Survey name]"
 
 data = sqlQuery(Connection,Sql)
@@ -297,22 +355,9 @@ ggplot(data) +
   xlab("Year") 
 ```
 
-Figure X. Sex and age ratios over time for the Chisana caribou herd. The top solid horizontal line represents the goal bulls/100 cows ratio, and the bottom solid horizontal line represents the goal calves/100 cows ratio.
+Figure X. Sex and age ratios over time for the `r Herd` caribou herd. The top solid horizontal line represents the goal bulls/100 cows ratio, and the bottom solid horizontal line represents the goal calves/100 cows ratio.
 
-Table `r TableCount`. Census surveys accomplished in `r Year`.
 
-```{r echo=FALSE}
-# List out the surveys accomplished
-Sql = paste("SELECT [Survey name],Herd, [Start date], [End date], [Type of survey], [Total groups observed], [Survey days], [Search areas]
-FROM            Summary_Census
-WHERE        (Year = ",Year,") And Park = '",Park,"'
-ORDER BY [Start date] ",sep="")
-SurveysDoneDF = sqlQuery(Connection,Sql)
-
-kable(SurveysDoneDF[,c("Start date","End date","Herd","Type of survey","Total groups observed","Survey days","Search areas")])
-TableCount = TableCount + 1
-
-```
 
 Table `r TableCount`. Radiotracking surveys accomplished in `r Year`.
 
@@ -350,3 +395,11 @@ TableCount = TableCount + 1
 ```
 
 # Discussion
+
+
+```{r, echo=FALSE}
+# Rename the resulting html file with the year, herd and survey type
+NewFilename = paste(Year," ",Herd," Caribou ",SurveyTypeLong," Survey Summary.html",sep='')
+file.rename('WRST Caribou Census Summary.html', NewFilename)
+```
+
